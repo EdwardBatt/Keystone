@@ -1,0 +1,107 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:keystone:schema:common:1",
+  "$defs": {
+    "nonemptyString": {
+      "type": "string",
+      "minLength": 1
+    },
+    "nonblankString": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "\\S"
+    },
+    "nullableString": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "optionalFeature": {
+      "anyOf": [
+        {
+          "type": "string",
+          "minLength": 1
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "stringList": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/nonemptyString"
+      },
+      "uniqueItems": true
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "$ref": "#/$defs/nonblankString"
+        },
+        "title": {
+          "$ref": "#/$defs/nonblankString"
+        },
+        "id": {
+          "$ref": "#/$defs/nonemptyString"
+        },
+        "project_id": {
+          "$ref": "#/$defs/nonemptyString"
+        },
+        "feature": {
+          "$ref": "#/$defs/optionalFeature"
+        },
+        "created": {
+          "$ref": "#/$defs/nullableString"
+        },
+        "completed": {
+          "$ref": "#/$defs/nullableString"
+        },
+        "priority": {
+          "type": "string"
+        },
+        "confidence": {
+          "type": "string"
+        },
+        "severity": {
+          "type": "string"
+        },
+        "depends_on": {
+          "$ref": "#/$defs/stringList"
+        },
+        "key_adrs": {
+          "$ref": "#/$defs/stringList"
+        },
+        "key_rules": {
+          "$ref": "#/$defs/stringList"
+        },
+        "features": {
+          "$ref": "#/$defs/stringList"
+        },
+        "tasks": {
+          "$ref": "#/$defs/stringList"
+        },
+        "adrs": {
+          "$ref": "#/$defs/stringList"
+        },
+        "rules": {
+          "$ref": "#/$defs/stringList"
+        },
+        "skills": {
+          "$ref": "#/$defs/stringList"
+        },
+        "files": {
+          "$ref": "#/$defs/stringList"
+        },
+        "tags": {
+          "$ref": "#/$defs/stringList"
+        },
+        "evidence": {
+          "$ref": "#/$defs/stringList"
+        }
+      }
+    }
+  }
+}

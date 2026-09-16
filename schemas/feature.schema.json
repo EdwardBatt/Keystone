@@ -1,9 +1,30 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
+  "allOf": [
+    {
+      "$ref": "urn:keystone:schema:common:1#/$defs/metadata"
+    }
+  ],
   "required": [
+    "context_type",
+    "schema_version",
     "feature",
     "status"
   ],
+  "properties": {
+    "context_type": {
+      "const": "feature"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "feature": {
+      "$ref": "urn:keystone:schema:common:1#/$defs/nonemptyString"
+    },
+    "status": {
+      "$ref": "urn:keystone:schema:common:1#/$defs/metadata/properties/status"
+    }
+  },
   "additionalProperties": true
 }

@@ -53,11 +53,11 @@ git push -u origin main
 ## 5. Install the Node dependencies
 
 ```powershell
-npm install
+npm ci
 ```
 
-At scaffold stage the package is intentionally minimal. Codex Phase 0 should select/add only the
-dependencies required by the approved specification.
+Phase 0/1 dependencies are recorded in `package-lock.json`. Installation may require network
+access; subsequent CLI commands and tests run offline.
 
 ## 6. Open Keystone in your coding environment
 
@@ -91,7 +91,18 @@ For the first implementation pass, verify that Codex:
 7. Did not silently overwrite authoritative files.
 8. Implemented deterministic/rebuildable indexing and structural validation.
 
-Run the project's test and validation commands once Codex defines them.
+Run the implemented checks:
+
+```powershell
+npm run build
+npm run check
+npm test
+node dist/cli/index.js validate --root "C:\path\to\target" --json
+```
+
+See `docs/PHASE-0-1.md` for implementation documentation on discovery and validation.
+`SPEC.md` and `ARCHITECTURE-DECISIONS.md` remain authoritative, and
+`FIRST-CODEX-TASK.md` defines the implementation task contract.
 
 ## 9. Commit the first implementation phase
 

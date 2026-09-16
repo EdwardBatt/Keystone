@@ -1,10 +1,40 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
+  "allOf": [
+    {
+      "$ref": "urn:keystone:schema:common:1#/$defs/metadata"
+    }
+  ],
   "required": [
+    "context_type",
+    "schema_version",
     "id",
     "title",
     "status"
   ],
+  "properties": {
+    "context_type": {
+      "const": "adr"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "supersedes": {
+      "$ref": "urn:keystone:schema:common:1#/$defs/stringList"
+    },
+    "superseded_by": {
+      "$ref": "urn:keystone:schema:common:1#/$defs/stringList"
+    },
+    "id": {
+      "$ref": "urn:keystone:schema:common:1#/$defs/metadata/properties/id"
+    },
+    "title": {
+      "$ref": "urn:keystone:schema:common:1#/$defs/metadata/properties/title"
+    },
+    "status": {
+      "$ref": "urn:keystone:schema:common:1#/$defs/metadata/properties/status"
+    }
+  },
   "additionalProperties": true
 }

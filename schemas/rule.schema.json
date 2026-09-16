@@ -8,22 +8,14 @@
   ],
   "required": [
     "context_type",
-    "schema_version",
-    "id",
-    "status"
+    "schema_version"
   ],
   "properties": {
     "context_type": {
-      "const": "learning"
+      "const": "rule"
     },
     "schema_version": {
       "const": 1
-    },
-    "id": {
-      "$ref": "urn:keystone:schema:common:1#/$defs/metadata/properties/id"
-    },
-    "status": {
-      "$ref": "urn:keystone:schema:common:1#/$defs/metadata/properties/status"
     }
   },
   "additionalProperties": true
