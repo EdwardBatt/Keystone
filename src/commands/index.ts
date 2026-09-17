@@ -1,6 +1,6 @@
 import { mkdir, readFile, rename, unlink, writeFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
-import { compare, fail, KeystoneError, serialize, sortDiagnostics, type Diagnostic, type Index } from '../core.js';
+import { compare, fail, isKeystoneIndex, KeystoneError, serialize, sortDiagnostics, type Diagnostic, type Index } from '../core.js';
 import { loadConfig } from '../context/config.js';
 import { discover } from '../parser/discovery.js';
 import { buildGraph } from '../graph/index.js';
@@ -28,7 +28,7 @@ export async function inspect(input: string): Promise<Inspection> {
   };
 }
 
-/** Only this function writes project state, and only the disposable generated index. */
+/** Phase 1 writer: writes only the disposable generated index. */
 export async function writeIndex(inspection: Inspection): Promise<boolean> {
   if (inspection.diagnostics.length) fail('INDEX_INVALID', '.context/index.json', 'Cannot write an index with validation errors.');
   const file = '.context/index.json';
@@ -38,9 +38,7 @@ export async function writeIndex(inspection: Inspection): Promise<boolean> {
     const existing = await readFile(absolute, 'utf8');
     let previous: unknown;
     try { previous = JSON.parse(existing); } catch { /* Treat unrecognized contents as project-owned. */ }
-    if (!previous || typeof previous !== 'object' ||
-      (previous as Index).generated_by !== 'keystone' || (previous as Index).schema_version !== 1 ||
-      !Array.isArray((previous as Index).artifacts) || !Array.isArray((previous as Index).links)) {
+    if (!isKeystoneIndex(previous)) {
       fail('INDEX_OVERWRITE_REFUSED', file, 'Existing file is not a recognized Keystone generated index. Move it explicitly before indexing.');
     }
     if (existing === contents) return false;

@@ -1,5 +1,8 @@
 # Phase 0/1 implementation
 
+This document describes the foundation implemented by TASK-0001. For the subsequent
+`init` and `context status` additions, see [Phase 2 implementation](PHASE-2.md).
+
 Task: **TASK-0001**. Implements the foundation, index, and structural validation portions
 of `FIRST-CODEX-TASK.md`. This file is implementation documentation only. `SPEC.md` and
 `ARCHITECTURE-DECISIONS.md` remain authoritative; `FIRST-CODEX-TASK.md` is the implementation
@@ -18,9 +21,9 @@ subject to the proposal/review requirements in the authoritative documents.
   No schema is downloaded at runtime.
 - `.context/index.json` is the single generated output. JSON is sufficient for this phase;
   no database, external service, embedding, or model call is used.
-- Only `index` and `validate` are implemented. Help and version are available.
-  Initialization, status, context envelopes, review, task closure, promotion, compaction,
-  telemetry, and benchmark execution are later-phase work.
+- Phase 0/1 implements `index`, `validate`, help, and version. Initialization and status
+  are described in the Phase 2 document; context envelopes, review, task closure,
+  promotion, compaction, telemetry, and benchmark execution remain later-phase work.
 - Full lifecycle enums, semantic contradiction resolution, promotion policy, and authority
   changes are not inferred. Changes to those contracts would require architectural review.
 
@@ -40,8 +43,8 @@ node dist/cli/index.js index --root "C:\path\to\target" --json
 
 `npm test` builds first. Dependencies must already be installed to build or test offline.
 All runtime operations and tests use local files. No Git initialization is required for
-these two commands. `--root` defaults to the current directory; Git-root detection belongs
-to the future `init` command. Relative root paths and paths containing spaces work.
+these two commands. `--root` defaults to the current directory; Git-root detection is used
+by Phase 2 `init` and `context status`. Relative root paths and paths containing spaces work.
 
 The package's `bin` exposes `keystone` when installed or linked through npm. Calling the
 compiled entry point directly requires no global installation. This framework repository

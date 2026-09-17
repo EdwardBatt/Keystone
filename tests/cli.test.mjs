@@ -74,7 +74,9 @@ test('help, version, usage errors, and later-phase commands are explicit', async
   const root = await temporary(t, false);
   for (const [args, code] of [
     [[], 'CLI_USAGE'], [['unknown'], 'CLI_USAGE'], [['validate', '--force'], 'CLI_USAGE'],
-    ...['init', 'start', 'close', 'review', 'compact', 'context'].map(command => [[command], 'COMMAND_NOT_IMPLEMENTED']),
+    [['context'], 'CLI_USAGE'],
+    ...['start', 'close', 'review', 'compact'].map(command => [[command], 'COMMAND_NOT_IMPLEMENTED']),
+    [['context', 'explain', 'TASK-0002'], 'COMMAND_NOT_IMPLEMENTED'],
   ]) {
     const result = cli(root, ...args);
     assert.equal(result.status, 2);
