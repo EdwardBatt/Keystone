@@ -69,6 +69,38 @@ The package exposes `keystone`.
 Default target envelope: 8,000 estimated tokens. Tier 0/1 may exceed the target but must never be
 silently omitted.
 
+### START eligibility and effective context
+
+ADR-0001 records the adopted START context-selection contract. Structural inventory, binding
+context and explicitly requested non-binding review material are distinct. Individual task files
+own task facts; `TASKS.md` is navigation/projection and does not determine START input. Discovery,
+validation, indexing and references do not confer authority. Eligibility is artifact-specific;
+unknown states remain non-binding inventory. A non-binding selection path cannot make descendants
+binding, while an independent eligible path may do so. Deduplication preserves the strongest
+independently established role and all reasons.
+
+START uses configured/discovered inventory; conventional paths do not override explicit discovery.
+Selection is bounded and deterministic. Tier 0 includes the root task and sole eligible project;
+the eligible project's `key_rules` select mandatory rules, and `rules/GLOBAL.md` is selected only
+under default discovery. Features remain optional. Direct eligible feature/task dependencies and
+task-relevant reverse learning/trap associations are bounded as defined by ADR-0001. Directly
+relevant typed proposals are Tier 1 review material and never binding; ordinary/untyped files are
+Tier 3 evidence with visible omission reporting. Unknown severity is not promoted; only repository-
+evidenced severity semantics may be used.
+
+ADR replacements normalize `supersedes` and `superseded_by` into older-to-newer edges, permit
+one-sided declarations, resolve an unambiguous whole-artifact chain to one accepted endpoint, and
+show competing/unresolved branches as conflicted non-binding material. Proposed successors cannot
+retire accepted decisions. Missing or conflicting mandatory context is inspectable but incomplete;
+structural/input failure is failed. Whole-body fallback preserves managed Markdown when semantic
+headings are absent or ambiguous. START never authorizes implementation or mutates sources.
+
+Its semantic outcomes are `complete`, `incomplete/conflicted` and `failed`; successful compilation
+does not mean implementation-ready. Generated context is disposable/rebuildable and Tier 0/1
+content is retained despite the 8,000-token target, with deterministic omissions reported for lower
+tiers. Exact serialization, diagnostics, packing and atomic replacement are implementation-contract
+details for Phase 3.
+
 ## Target repo created by `keystone init`
 
 See `templates/TARGET-REPO-TREE.md`.
