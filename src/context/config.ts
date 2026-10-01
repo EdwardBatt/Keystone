@@ -8,6 +8,7 @@ import { isGeneratedPath } from './generated.js';
 export interface Config {
   schema_version: 1;
   sources: string[];
+  explicitSources?: boolean;
 }
 
 export const defaultConfig: Config = {
@@ -44,5 +45,5 @@ export async function loadConfig(root: string): Promise<Config> {
       }
     }
   }
-  return { schema_version: 1, sources };
+  return { schema_version: 1, sources, explicitSources: Object.hasOwn(data, 'sources') };
 }

@@ -226,7 +226,7 @@ test('generated index remains byte-for-byte rebuildable after initialization', a
   assert.equal(await readFile(path.join(root, '.context/index.json'), 'utf8'), initial);
 });
 
-test('Phase 2 options reject invalid usage and Phase 3+ commands stay unavailable', async t => {
+test('Phase 2 options reject invalid usage and deferred commands stay unavailable', async t => {
   const root = await repo(t);
   const before = await snapshot(root);
   for (const args of [['init', '--adapter', 'unknown'], ['context', 'status', '--force'], ['validate', '--adapter', 'claude'], ['context', 'status', 'extra']]) {
@@ -234,7 +234,7 @@ test('Phase 2 options reject invalid usage and Phase 3+ commands stay unavailabl
     assert.equal(result.status, 2);
     assert.equal(result.result.diagnostics[0].code, 'CLI_USAGE');
   }
-  for (const args of [['start', 'TASK-0002'], ['close', 'TASK-0002'], ['review', 'TASK-0002'], ['compact'], ['context', 'explain', 'TASK-0002']]) {
+  for (const args of [['close', 'TASK-0002'], ['review', 'TASK-0002'], ['compact'], ['context', 'explain', 'TASK-0002']]) {
     const result = cli(root, ...args);
     assert.equal(result.status, 2);
     assert.equal(result.result.diagnostics[0].code, 'COMMAND_NOT_IMPLEMENTED');

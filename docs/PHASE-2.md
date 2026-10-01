@@ -119,7 +119,8 @@ Phase 0/1 error codes remain in use. Phase 2 adds:
 
 `context status` also uses `INDEX_INVALID` for a structurally invalid generated index. Usage
 errors exit `2`; validation/I/O failures exit `1`; successful commands exit `0`.
-Phase 3+ commands remain unavailable with `COMMAND_NOT_IMPLEMENTED`.
+At Phase 2 completion, Phase 3+ commands were unavailable with `COMMAND_NOT_IMPLEMENTED`.
+START is now implemented separately; see [Phase 3](PHASE-3.md). Other deferred commands remain unavailable.
 
 `tests/phase2.test.mjs` exercises initialization, preservation with/without force, adapters,
 nested roots, `.git` files, collisions, junctions, malformed configuration, hard-linked

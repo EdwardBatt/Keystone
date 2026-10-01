@@ -3,16 +3,18 @@ import { inspect, writeIndex } from '../commands/index.js';
 import { fail, KeystoneError, type Diagnostic } from '../core.js';
 import { adapters, initialize, type Adapter } from '../commands/init.js';
 import { contextStatus } from '../commands/status.js';
+import { start } from '../commands/start.js';
 
-const help = `Keystone v0.1 — Phase 0/1 and Phase 2
-Usage: keystone <index|validate|init|context status> [--root <directory>] [--json]
+const help = `Keystone v0.1 — through Phase 3
+Usage: keystone <index|validate|init|context status|start TASK-ID> [--root <directory>] [--json]
 
   index       Validate artifacts and rebuild .context/index.json
   validate    Check artifact schemas, IDs, links, and supersession (read-only)
   init        Create missing scaffold at the Git root, validate, and build the index
   context status  Report configuration, artifact counts, validation, and index freshness (read-only)
+  start TASK-ID   Compile deterministic task context; does not authorize implementation
   --root      Target directory (defaults to the working directory)
-              init/status detect its containing Git root; index/validate use it directly
+              init/status detect its containing Git root; index/validate/start use it directly
   --adapter   init only: offer codex, claude, or gemini (repeat to select several)
               AGENTS.md is always created if missing; Claude/Gemini adapters are opt-in
   --force     init only: reset config.yaml; existing project knowledge is preserved
@@ -20,7 +22,7 @@ Usage: keystone <index|validate|init|context status> [--root <directory>] [--jso
   --help      Show this help
   --version   Show the package version
 
-Phase 3+ commands are not implemented.`;
+Phase 4+ and context explain commands are not implemented.`;
 
 const args = process.argv.slice(2);
 const json = args.includes('--json');
@@ -59,10 +61,24 @@ async function main(): Promise<void> {
     fail('CLI_USAGE', '.', `Unexpected argument: ${arg}. Use --help for usage.`);
   }
   command = positional[0];
-  if (['start', 'close', 'review', 'compact'].includes(command ?? '') || command === 'context' && positional[1] === 'explain') {
-    fail('COMMAND_NOT_IMPLEMENTED', '.', `${positional.join(' ')} is outside Phase 2.`);
+  if (['close', 'review', 'compact'].includes(command ?? '') || command === 'context' && positional[1] === 'explain') {
+    fail('COMMAND_NOT_IMPLEMENTED', '.', `${positional.join(' ')} is outside Phase 3.`);
   }
   if (command !== 'init' && (force || selected.length)) fail('CLI_USAGE', '.', '--force and --adapter are only supported by init.');
+  if (command === 'start') {
+    if (positional.length !== 2) fail('CLI_USAGE', '.', 'Expected start TASK-ID.');
+    const result = await start(root, positional[1]);
+    if (json) console.log(JSON.stringify({ command, ok: result.outcome === 'complete', ...result }));
+    else {
+      console.log(`START ${result.task_id}: ${result.outcome}. Implementation authorization is not established.`);
+      for (const d of result.diagnostics) console.error(`${d.code} ${d.path}: ${d.message}`);
+      if (result.installed) console.log(`Context ${result.changed ? 'written' : 'unchanged'}: .context/current-envelope.json`);
+      if (result.envelope?.budget.exceeded) console.log('Target budget exceeded; mandatory content retained.');
+      if (result.envelope?.omissions.length) console.log(`${result.envelope.omissions.length} body omission(s); inspect envelope for reasons.`);
+    }
+    process.exitCode = result.outcome === 'complete' ? 0 : result.outcome === 'failed' ? 2 : 1;
+    return;
+  }
   if (command === 'context' && positional[1] === 'status' && positional.length === 2) {
     command = 'context status';
     const result = await contextStatus(root);

@@ -3,7 +3,7 @@ context_type: task
 schema_version: 1
 id: TASK-0004
 title: Implement Phase 3 START context compiler
-status: backlog
+status: accepted
 priority: high
 adrs: [ADR-0001]
 files:
@@ -25,6 +25,11 @@ files:
   - templates/adr.md
   - templates/learning.md
   - templates/trap.md
+  - docs/PHASE-3.md
+  - src/commands/start.ts
+  - src/context/envelope.ts
+  - src/context/selection.ts
+  - tests/phase3.test.mjs
 ---
 # TASK-0004 — Implement Phase 3 START context compiler
 
@@ -83,6 +88,11 @@ contradiction must be raised for a separately proposed ADR before implementation
 Do not add model-provider dependencies. Core behavior must work offline and be independent of
 Claude, Codex, Gemini or any hosted LLM.
 
+Implemented the deterministic mechanics in `docs/PHASE-3.md`, with role-aware selection,
+ADR replacement resolution, conservative Markdown extraction, deterministic budget packing,
+and atomic generated-envelope replacement. The CLI reuses existing config, discovery,
+parser, graph validation and portable-path behavior. No provider dependencies were added.
+
 ## Tests
 Cover: proposed feature→accepted ADR non-promotion; independent binding path; duplicate path
 roles/reasons; A→B→C replacement; proposed successor; competing replacements; both one-sided
@@ -91,8 +101,23 @@ context; unknown authority state; non-active root inspection; all three outcomes
 cross-cutting tasks; duplicate reachability; Tier 0/1 budget retention; visible Tier 3 omissions;
 source immutability; and identical-input reproducibility.
 
+Verification on 2026-10-01 after review fixes: build and type check passed; `npm test` passed all 152 tests
+(including 32 Phase 3 cases), with no failures, skips or cancellations. Keystone validation
+passed with 4 artifacts and no diagnostics. Regression coverage includes all scenarios above,
+explicit discovery equivalent to defaults, atomic partial-write/rename failures, binary evidence,
+cross-root reproducibility and generated-index independence.
+
 ## Review Findings
-No implementation findings yet. Review must verify each adopted authority and determinism guarantee.
+The two blocking review findings were fixed for re-review: conflicting project candidates
+retain non-binding roles and reasons through file aliases and other selection paths; ADR
+extraction exempts only a unique leading title and preserves any other unselected content
+through whole-body fallback. Three added regression cases cover one/both project aliases,
+review-path deduplication, and heading-only ADR constraints with title-boundary variants.
+The generated index was unstaged; generated `.context` state is ignored while authoritative
+`.context/config.yaml` remains trackable. Independent re-review returned APPROVE, confirming
+both blockers were resolved. SPEC.md, approved ADRs and schemas were not changed.
 
 ## Outcome
-Backlog: Phase 3 implementation is authorized only after this task is separately accepted for work.
+Formally accepted on 2026-10-01 following independent re-review with APPROVE and user
+authorization. Phase 3 implementation and acceptance verification are complete. Explicitly
+deferred functionality remains unimplemented.

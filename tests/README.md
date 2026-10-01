@@ -18,6 +18,9 @@ the local Git executable for temporary repository discovery fixtures.
   adapter selection, destination conflicts, and read-only status/index freshness.
   Temporary Git fixtures use no network. The linked-worktree test creates an empty local
   fixture commit with test-only identity; it does not commit to the framework repository.
+- `phase3.test.mjs`: START authority paths, ADR replacement/conflicts, configured discovery,
+  bounded selection, excerpts, budget/omission accounting, all three outcomes, source preservation,
+  reproducibility and atomic envelope replacement. Phase 3 fixtures require no Git initialization.
 - `fixtures/valid`: a generic target repository covering every supported artifact type.
   Invalid cases are created as explicit mutations of these fixtures in temporary roots.
 
