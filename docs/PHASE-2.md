@@ -131,11 +131,12 @@ continue to run alongside these tests, with command-availability expectations up
 
 ## Bootstrapping this framework repository
 
-Do not infer project facts or task history during initialization. When the owner elects to
-bootstrap, run ordinary `init` without `--force` at this repository root. Existing `AGENTS.md`
-and `tasks/TASK-0002-phase-2-init-status.md` are preserved; missing `PROJECT.md` and `TASKS.md`
-come from the existing templates. Optional Claude/Gemini adapters require explicit selection.
-Review the resulting scaffold, then separately author the project overview and add the
-existing TASK-0002 to the task index under Review, reflecting its actual metadata. This
-manual documentation step is not performed by init. Run `validate`, then `index`, then
-`context status` after those edits. No `start` or context envelope is involved.
+This repository is bootstrapped by hand under TASK-0005, not by running `init`. Full `init`
+would add empty scaffold files (agent roles, context ledgers, rules and skills) that hold no
+project knowledge and belong to later phases. The hand-authored set is `PROJECT.md`,
+`TASKS.md`, `adr/INDEX.md` and a `.context/config.yaml` that contains only `schema_version: 1`,
+so default discovery still applies. Do not infer project facts or task history; the
+retrospective TASK-0001 record cites only repository evidence. After editing context
+artifacts, run `validate`, then `index`, then `context status`. `start <TASK-ID>` should
+compile this repository's tasks as `complete`, which does not authorize implementation.
+Add further scaffold files only when a task needs them.

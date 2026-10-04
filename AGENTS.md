@@ -9,4 +9,6 @@
 7. High-authority ADR/rule/skill changes require proposal/review.
 8. For context-managed work, use a TASK ID in commits; include ADR IDs when relevant.
 9. Preserve Windows-safe paths and offline-testability.
-10. For the initial implementation, obey `FIRST-CODEX-TASK.md`: Phase 0 + Phase 1 only.
+10. Implement only work the project owner has authorized through a task artifact in `tasks/`.
+    Creating a task or proposal, validating it, or compiling START context does not authorize
+    implementation. `FIRST-CODEX-TASK.md` is the historical contract for TASK-0001.

@@ -1,5 +1,9 @@
 # First Codex Task — Keystone v0.1
 
+> **Historical — contract for TASK-0001 (accepted).** This file records the original scope of
+> the Phase 0/1 implementation and does not limit current work. Current work is authorized
+> through task artifacts in `tasks/`; see `TASKS.md` and AGENTS.md rule 10.
+
 ## Contract
 
 Read `SPEC.md`, `ARCHITECTURE-DECISIONS.md`, and `AGENTS.md` before changing code.
