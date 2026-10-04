@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:keystone:schema:review-report:1",
+  "title": "Keystone reviewer report front matter",
+  "type": "object",
+  "required": ["kind", "schema_version", "task", "role", "round", "verdict", "evidence_hash", "base", "reviewer"],
+  "properties": {
+    "kind": { "const": "keystone-review-report" },
+    "schema_version": { "const": 1 },
+    "task": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$" },
+    "role": { "enum": ["code", "architecture", "context"] },
+    "round": { "type": "integer", "minimum": 1 },
+    "verdict": { "enum": ["approve", "changes-requested", "inconclusive"] },
+    "evidence_hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "base": { "type": "string", "pattern": "^[a-f0-9]{40}([a-f0-9]{24})?$" },
+    "reviewer": { "type": "string", "minLength": 1 }
+  },
+  "not": { "required": ["context_type"] },
+  "additionalProperties": true
+}

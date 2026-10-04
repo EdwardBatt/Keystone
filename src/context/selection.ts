@@ -1,5 +1,6 @@
 import { compare, serialize, sortDiagnostics, type Artifact, type Diagnostic, type Link } from '../core.js';
 import { entryOrder, type Entry, type Reason, type Replacement, type Role } from './envelope.js';
+import { isReviewRecordPath } from '../review/records.js';
 
 const historical = (a: Artifact) => a.type === 'adr' && ['accepted', 'superseded'].includes(String(a.metadata.status));
 export function eligible(a: Artifact): boolean {
@@ -24,6 +25,7 @@ export function select(task: Artifact, artifacts: Artifact[], links: Link[], exp
   const selected = new Map<string, Entry>();
   const diagnostics: Diagnostic[] = [];
   const conflicts = new Set<string>();
+  const refused = new Map<string, { id: string; path: string; reason: string }>();
   let incomplete = false;
   const outgoing = (a: Artifact, fields?: string[]) => links.filter(l => l.source === a.id && (!fields || fields.includes(l.field)));
   const target = (l: Link) => l.kind === 'artifact' ? byId.get(l.target) : byPath.get(l.target);
@@ -46,6 +48,13 @@ export function select(task: Artifact, artifacts: Artifact[], links: Link[], exp
   }
   function file(l: Link, tier: number, role: Role) {
     const id = `file:${l.target}`;
+    // A validly identified review record is refused after ordinary path validation (ADR-0002).
+    if (isReviewRecordPath(l.target)) {
+      refused.set(id, { id, path: l.target, reason: 'review-record-ineligible' });
+      diagnostics.push({ code: 'START_REVIEW_RECORD_INELIGIBLE', path: byId.get(l.source)?.path ?? l.target,
+        message: `Review record ${l.target} is ineligible for START and review-context selection.` });
+      return;
+    }
     let entry = selected.get(id);
     if (!entry) {
       entry = { id, type: 'file', path: l.target, hash: '', metadata: {}, role, tier, reasons: [], excerpt: 'file' };
@@ -192,6 +201,7 @@ export function select(task: Artifact, artifacts: Artifact[], links: Link[], exp
   }
   return {
     entries: [...selected.values()].sort(entryOrder), incomplete,
+    refused: [...refused.values()].sort((a, b) => compare(a.id, b.id)),
     diagnostics: sortDiagnostics([...new Map(diagnostics.map(d => [serialize(d), d])).values()]),
     replacements: [...examined].sort(compare).map(key => { const edge = edgeMap.get(key)!; return { ...edge, declarations: edge.declarations.sort(compare) }; }),
   };

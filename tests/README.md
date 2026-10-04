@@ -21,6 +21,18 @@ the local Git executable for temporary repository discovery fixtures.
 - `phase3.test.mjs`: START authority paths, ADR replacement/conflicts, configured discovery,
   bounded selection, excerpts, budget/omission accounting, all three outcomes, source preservation,
   reproducibility and atomic envelope replacement. Phase 3 fixtures require no Git initialization.
+- `phase4.test.mjs`: review evidence packages, covering:
+  - role isolation and claim withholding;
+  - baseline requirements and introduced tasks;
+  - deterministic, uncontaminated evidence identity across packages, reports, dispositions and
+    commits;
+  - review-record START ineligibility;
+  - failure versus incomplete outcomes;
+  - non-mutation of project and Git state, and trace isolation;
+  - unrepresentable content, charters and commit flags;
+  - partition and diff mechanics, and the report contract.
+
+  Fixtures are local temporary Git repositories with test-only identity; no network is used.
 - `fixtures/valid`: a generic target repository covering every supported artifact type.
   Invalid cases are created as explicit mutations of these fixtures in temporary roots.
 

@@ -6,11 +6,12 @@ import { caseCollisions, isMissing, safePath } from '../paths.js';
 import { parseMarkdown } from './frontmatter.js';
 import { validateSchema } from '../validation/schemas.js';
 import { isGeneratedPath } from '../context/generated.js';
+import { isReviewRecordPath } from '../review/records.js';
 
 const types = new Set<ArtifactType>(['project', 'task', 'feature', 'adr', 'learning', 'trap', 'rule', 'skill']);
 const excluded = new Set(['.git', '.context', 'node_modules', 'dist']);
 
-function expectedType(file: string): ArtifactType | undefined {
+export function expectedType(file: string): ArtifactType | undefined {
   if (file === 'PROJECT.md') return 'project';
   const [directory] = file.split('/');
   const name = file.split('/').at(-1)!;
@@ -30,7 +31,8 @@ export async function discover(root: string, config: Config): Promise<{ artifact
     { code: 'IO_ERROR', path: file, message: 'Cannot read artifact path.' });
   async function walk(file: string, optional: boolean): Promise<void> {
     if (visited.has(file)) return;
-    if (isGeneratedPath(file) || file.split('/').some(segment => excluded.has(segment.toLowerCase()))) return;
+    // Review records are never artifact inventory (ADR-0002 guarantee 8).
+    if (isGeneratedPath(file) || isReviewRecordPath(file) || file.split('/').some(segment => excluded.has(segment.toLowerCase()))) return;
     visited.add(file);
     try {
       const absolute = await safePath(root, file);

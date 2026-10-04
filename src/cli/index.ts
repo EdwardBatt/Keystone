@@ -4,17 +4,21 @@ import { fail, KeystoneError, type Diagnostic } from '../core.js';
 import { adapters, initialize, type Adapter } from '../commands/init.js';
 import { contextStatus } from '../commands/status.js';
 import { start } from '../commands/start.js';
+import { review, type ReviewType } from '../commands/review.js';
 
-const help = `Keystone v0.1 — through Phase 3
-Usage: keystone <index|validate|init|context status|start TASK-ID> [--root <directory>] [--json]
+const help = `Keystone v0.1 — through Phase 4
+Usage: keystone <index|validate|init|context status|start TASK-ID|review TASK-ID> [--root <directory>] [--json]
 
   index       Validate artifacts and rebuild .context/index.json
   validate    Check artifact schemas, IDs, links, and supersession (read-only)
   init        Create missing scaffold at the Git root, validate, and build the index
   context status  Report configuration, artifact counts, validation, and index freshness (read-only)
   start TASK-ID   Compile deterministic task context; does not authorize implementation
+  review TASK-ID  Prepare isolated review evidence packages; never determines a verdict
+              --type code|architecture|context|all (default all), --base <rev> (default HEAD)
   --root      Target directory (defaults to the working directory)
-              init/status detect its containing Git root; index/validate/start use it directly
+              init/status detect its containing Git root; index/validate/start use it directly;
+              review requires the Git top-level
   --adapter   init only: offer codex, claude, or gemini (repeat to select several)
               AGENTS.md is always created if missing; Claude/Gemini adapters are opt-in
   --force     init only: reset config.yaml; existing project knowledge is preserved
@@ -22,7 +26,7 @@ Usage: keystone <index|validate|init|context status|start TASK-ID> [--root <dire
   --help      Show this help
   --version   Show the package version
 
-Phase 4+ and context explain commands are not implemented.`;
+close, compact (Phase 5+) and context explain are not implemented.`;
 
 const args = process.argv.slice(2);
 const json = args.includes('--json');
@@ -45,6 +49,8 @@ async function main(): Promise<void> {
   let root = process.cwd();
   let rootSpecified = false;
   let force = false;
+  let reviewType: ReviewType | undefined;
+  let base: string | undefined;
   const selected: Adapter[] = [];
   const positional: string[] = [];
   for (let i = 0; i < args.length; i++) {
@@ -54,6 +60,10 @@ async function main(): Promise<void> {
       root = args[++i]; rootSpecified = true; continue;
     }
     if (arg === '--force') { force = true; continue; }
+    if (arg === '--type' && reviewType === undefined && ['code', 'architecture', 'context', 'all'].includes(args[i + 1])) {
+      reviewType = args[++i] as ReviewType; continue;
+    }
+    if (arg === '--base' && base === undefined && args[i + 1] && !args[i + 1].startsWith('-')) { base = args[++i]; continue; }
     if (arg === '--adapter' && args[i + 1] && adapters.includes(args[i + 1] as Adapter)) {
       selected.push(args[++i] as Adapter); continue;
     }
@@ -61,9 +71,10 @@ async function main(): Promise<void> {
     fail('CLI_USAGE', '.', `Unexpected argument: ${arg}. Use --help for usage.`);
   }
   command = positional[0];
-  if (['close', 'review', 'compact'].includes(command ?? '') || command === 'context' && positional[1] === 'explain') {
-    fail('COMMAND_NOT_IMPLEMENTED', '.', `${positional.join(' ')} is outside Phase 3.`);
+  if (['close', 'compact'].includes(command ?? '') || command === 'context' && positional[1] === 'explain') {
+    fail('COMMAND_NOT_IMPLEMENTED', '.', `${positional.join(' ')} is outside Phase 4.`);
   }
+  if (command !== 'review' && (reviewType !== undefined || base !== undefined)) fail('CLI_USAGE', '.', '--type and --base are only supported by review.');
   if (command !== 'init' && (force || selected.length)) fail('CLI_USAGE', '.', '--force and --adapter are only supported by init.');
   if (command === 'start') {
     if (positional.length !== 2) fail('CLI_USAGE', '.', 'Expected start TASK-ID.');
@@ -75,6 +86,19 @@ async function main(): Promise<void> {
       if (result.installed) console.log(`Context ${result.changed ? 'written' : 'unchanged'}: .context/current-envelope.json`);
       if (result.envelope?.budget.exceeded) console.log('Target budget exceeded; mandatory content retained.');
       if (result.envelope?.omissions.length) console.log(`${result.envelope.omissions.length} body omission(s); inspect envelope for reasons.`);
+    }
+    process.exitCode = result.outcome === 'complete' ? 0 : result.outcome === 'failed' ? 2 : 1;
+    return;
+  }
+  if (command === 'review') {
+    if (positional.length !== 2) fail('CLI_USAGE', '.', 'Expected review TASK-ID.');
+    const result = await review(root, positional[1], { type: reviewType, base });
+    if (json) console.log(JSON.stringify({ command, ok: result.outcome === 'complete', task_id: result.task_id, outcome: result.outcome,
+      evidence_hash: result.evidence_hash, installed: result.installed, written: result.written, diagnostics: result.diagnostics }));
+    else {
+      console.log(`REVIEW ${result.task_id}: ${result.outcome}. Evidence only; no verdict or implementation readiness is determined.`);
+      for (const d of result.diagnostics) console.error(`${d.code} ${d.path}: ${d.message}`);
+      for (const w of result.written) console.log(`Package ${w.changed ? 'written' : 'unchanged'}: ${w.path}`);
     }
     process.exitCode = result.outcome === 'complete' ? 0 : result.outcome === 'failed' ? 2 : 1;
     return;

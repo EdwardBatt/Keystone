@@ -46,9 +46,12 @@ test('accepted nested metadata round-trips through generated JSON without semant
 });
 
 test('all existing typed templates conform to their artifact schemas', async () => {
-  for (const file of await readdir(path.join(project, 'templates'))) {
+  for (const entry of await readdir(path.join(project, 'templates'), { withFileTypes: true })) {
+    if (!entry.isFile()) continue;
+    const file = entry.name;
     const parsed = parseMarkdown(await readFile(path.join(project, 'templates', file), 'utf8'), file);
-    if (parsed.metadata) assert.deepEqual(validateSchema(parsed.metadata.context_type, parsed.metadata, file), [], file);
+    // Reviewer reports (templates/review.md) are deliberately untyped; see phase4.test.mjs.
+    if (parsed.metadata && 'context_type' in parsed.metadata) assert.deepEqual(validateSchema(parsed.metadata.context_type, parsed.metadata, file), [], file);
   }
 });
 

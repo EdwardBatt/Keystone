@@ -234,7 +234,7 @@ test('Phase 2 options reject invalid usage and deferred commands stay unavailabl
     assert.equal(result.status, 2);
     assert.equal(result.result.diagnostics[0].code, 'CLI_USAGE');
   }
-  for (const args of [['close', 'TASK-0002'], ['review', 'TASK-0002'], ['compact'], ['context', 'explain', 'TASK-0002']]) {
+  for (const args of [['close', 'TASK-0002'], ['compact'], ['context', 'explain', 'TASK-0002']]) {
     const result = cli(root, ...args);
     assert.equal(result.status, 2);
     assert.equal(result.result.diagnostics[0].code, 'COMMAND_NOT_IMPLEMENTED');

@@ -15,6 +15,21 @@ async function template(name: string): Promise<string> {
   return (await readFile(new URL(`../../templates/${name}`, import.meta.url), 'utf8')).replace(/\r\n?/g, '\n');
 }
 
+/** Heading-only placeholder files created by init. */
+const placeholders: [string, string][] = [
+  ['context/INDEX.md', 'Context index'], ['context/DECISIONS.md', 'Decisions'],
+  ['context/LEARNINGS.md', 'Learnings'], ['context/TRAPS.md', 'Traps'],
+  ['adr/INDEX.md', 'Architecture decisions'], ['skills/INDEX.md', 'Skills'],
+  ...['GLOBAL', 'ARCHITECTURE', 'CODING', 'SECURITY', 'TESTING', 'DOCUMENTATION'].map((name): [string, string] => [`rules/${name}.md`, name]),
+  ...['implementer', 'code-reviewer', 'architecture-reviewer', 'context-reviewer'].map((name): [string, string] => [`agents/${name}.md`, name]),
+];
+
+/** Every file init can create; the single scaffold definition shared with review classification. */
+export const scaffoldFiles: readonly string[] = [
+  '.context/config.yaml', 'PROJECT.md', 'TASKS.md', 'AGENTS.md', 'context/STATE.md',
+  ...placeholders.map(([file]) => file), 'CLAUDE.md', 'GEMINI.md',
+].sort(compare);
+
 async function scaffold(root: string, selected: readonly Adapter[]): Promise<Map<string, string>> {
   const projectId = path.basename(root).toLowerCase().replace(/[^a-z0-9._-]+/g, '-').replace(/^[^a-z0-9]+/, '') || 'project';
   const files = new Map<string, string>([
@@ -24,13 +39,7 @@ async function scaffold(root: string, selected: readonly Adapter[]): Promise<Map
     ['AGENTS.md', await template('AGENTS.md')],
     ['context/STATE.md', await template('STATE.md')],
   ]);
-  for (const [file, title] of [
-    ['context/INDEX.md', 'Context index'], ['context/DECISIONS.md', 'Decisions'],
-    ['context/LEARNINGS.md', 'Learnings'], ['context/TRAPS.md', 'Traps'],
-    ['adr/INDEX.md', 'Architecture decisions'], ['skills/INDEX.md', 'Skills'],
-    ...['GLOBAL', 'ARCHITECTURE', 'CODING', 'SECURITY', 'TESTING', 'DOCUMENTATION'].map(name => [`rules/${name}.md`, name]),
-    ...['implementer', 'code-reviewer', 'architecture-reviewer', 'context-reviewer'].map(name => [`agents/${name}.md`, name]),
-  ]) files.set(file, `# ${title}\n`);
+  for (const [file, title] of placeholders) files.set(file, `# ${title}\n`);
   for (const adapter of selected) {
     // AGENTS.md is also the thin Codex entry point; it is always part of the target layout.
     if (adapter !== 'codex') files.set(adapter === 'claude' ? 'CLAUDE.md' : 'GEMINI.md',

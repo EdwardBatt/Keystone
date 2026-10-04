@@ -48,7 +48,7 @@ export async function compileStart(input: string, taskId: string): Promise<Start
       task: { id: task.id, status: task.metadata.status },
       outcome: selection.incomplete ? 'incomplete/conflicted' : 'complete', authorization: 'not-established',
       inventory: discovered.artifacts.map(a => ({ id: a.id, type: a.type, path: a.path, status: a.metadata.status ?? null })).sort((a, b) => compare(a.id, b.id)),
-      entries: selection.entries, replacements: selection.replacements, diagnostics: selection.diagnostics, omissions: [],
+      entries: selection.entries, replacements: selection.replacements, diagnostics: selection.diagnostics, omissions: [...selection.refused],
       budget: { target: 8000, estimated_tokens: 0, exceeded: false, estimator: 'ceil(utf8-bytes/4), excluding budget field' },
     }, unavailable);
     return { task_id: taskId, outcome: envelope.outcome, diagnostics: envelope.diagnostics, envelope, installed: false, changed: false };

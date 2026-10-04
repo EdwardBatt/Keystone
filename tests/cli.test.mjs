@@ -75,8 +75,8 @@ test('help, version, usage errors, and later-phase commands are explicit', async
   for (const [args, code] of [
     [[], 'CLI_USAGE'], [['unknown'], 'CLI_USAGE'], [['validate', '--force'], 'CLI_USAGE'],
     [['context'], 'CLI_USAGE'],
-    [['start'], 'CLI_USAGE'],
-    ...['close', 'review', 'compact'].map(command => [[command], 'COMMAND_NOT_IMPLEMENTED']),
+    [['start'], 'CLI_USAGE'], [['review'], 'CLI_USAGE'],
+    ...['close', 'compact'].map(command => [[command], 'COMMAND_NOT_IMPLEMENTED']),
     [['context', 'explain', 'TASK-0002'], 'COMMAND_NOT_IMPLEMENTED'],
   ]) {
     const result = cli(root, ...args);
@@ -86,7 +86,7 @@ test('help, version, usage errors, and later-phase commands are explicit', async
   for (const arg of ['--help', '-h', '--version']) {
     const result = spawnSync(process.execPath, [path.join(project, 'dist/cli/index.js'), arg], { encoding: 'utf8' });
     assert.equal(result.status, 0);
-    assert.match(result.stdout, arg === '--version' ? /0\.1\.0/ : /Phase 3/);
+    assert.match(result.stdout, arg === '--version' ? /0\.1\.0/ : /Phase 4/);
   }
   assert.deepEqual(await snapshot(root), {});
 });

@@ -4,6 +4,7 @@ import { isMissing, relativePath, safePath } from '../paths.js';
 import { parseYaml } from '../parser/frontmatter.js';
 import { validateSchema } from '../validation/schemas.js';
 import { isGeneratedPath } from './generated.js';
+import { isReviewRecordPath } from '../review/records.js';
 
 export interface Config {
   schema_version: 1;
@@ -33,6 +34,7 @@ export async function loadConfig(root: string): Promise<Config> {
   if (sources.some(source => source.split('/')[0].toLowerCase() === '.context' || isGeneratedPath(source))) {
     fail('CONFIG_INVALID', file, 'Generated Keystone state cannot be an artifact source.', 'sources');
   }
+  if (sources.some(isReviewRecordPath)) fail('CONFIG_INVALID', file, 'Review records under reviews/ cannot be an artifact source.', 'sources');
   // Defaults are optional; an explicit list is a user's concrete discovery request.
   if (Object.hasOwn(data, 'sources')) {
     for (const source of [...sources].sort(compare)) {
