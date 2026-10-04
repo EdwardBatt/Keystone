@@ -46,7 +46,7 @@ The package exposes `keystone`.
 - `keystone start <TASK-ID>`
 - `keystone close <TASK-ID>`
 - `keystone validate`
-- `keystone review <TASK-ID> [--type code|architecture|context|all]`
+- `keystone review <TASK-ID> [--type code|architecture|context|all] [--base <rev>]`
 - `keystone compact`
 - `keystone index`
 - `keystone context status`
@@ -100,6 +100,61 @@ does not mean implementation-ready. Generated context is disposable/rebuildable 
 content is retained despite the 8,000-token target, with deterministic omissions reported for lower
 tiers. Exact serialization, diagnostics, packing and atomic replacement are implementation-contract
 details for Phase 3.
+
+ADR-0002 supplements this contract with one rule. A path whose first segment
+equals `reviews`, compared case-insensitively, is ineligible for START through every path.
+Discovery never descends into the root-level `reviews/` directory, and a configured source equal
+to or inside `reviews` is invalid. A `files` reference that passes ordinary path validation and
+is then identified as a review record is refused with a defined, non-fatal diagnostic and a
+visible omission. Invalid references keep their existing diagnostics.
+
+## Review evidence
+
+ADR-0002 records the adopted Phase 4 review contract. `review` prepares deterministic evidence
+packages for the requested roles. Keystone never calls a model and never decides a verdict, and no
+outcome means approval or readiness. Independence means input isolation: a package never contains
+a reviewer report.
+
+The subject is the difference between a resolved base commit (`--base`, default `HEAD`, which must
+be an ancestor of `HEAD`) and the working tree, excluding ignored paths and `reviews/**`.
+Requirements and binding context are anchored to the base revision. Changes made during the work
+are evidence under review and cannot redefine their own standard. Requirement edits are shown
+side by side with the base requirements, and lifecycle fields are reported as facts to every
+reviewer role. A task introduced in the subject
+supplies the requirements under review without becoming project authority. Binding context is
+selected by the ADR-0001 rules in review mode over the base inventory, never over ambiguous
+identities. Unavailable valid targets are evidence gaps.
+
+Implementer claims are excluded from objective evidence, while requirements remain input.
+Root-task claim sections and unrecognised content, partitioned on the task template headings, are
+withheld from objective evidence, and commit message text is excluded. The context role alone
+receives root claim and unrecognised content, marked as unverified material under review. Operational checks go to the code and architecture roles as
+working-tree validation only, and to the context role in full. Every changed path is exposed. Typed and Keystone-managed
+changes are classified deterministically, and untyped authority is identified by reviewer
+charters. Charters are review-procedure inputs read from the base revision, and START does not
+automatically select them as reviewer charters.
+
+Review outcomes are `complete`, `incomplete/conflicted` and `failed`:
+- `failed` covers identity or structure that prevents reliable identification of the root task or
+  required binding context, and any inability to establish a trustworthy boundary or required
+  input;
+- `incomplete/conflicted` covers explicitly represented gaps.
+
+`evidence_hash` identifies a stable pre-review payload, including review-procedure identity. All
+operational checks are excluded from it, and it is unaffected by reports, dispositions and
+lifecycle fields.
+
+Packages are generated under `.context/review/`. Reviewer reports are durable, non-discovered
+records under `reviews/<TASK-ID>/<role>-<round>.md` and are not truth merely by existing. They use
+a provisional contract with verdicts `approve`, `changes-requested` and `inconclusive`, and body
+sections `Findings` (nonblank for `changes-requested`), `Evidence Examined` and `Limitations`
+(required for `inconclusive`). Phase 5 defines what verdicts and staleness mean for CLOSE.
+
+Review Git access never fetches, uses the network, follows replacement objects, writes trace
+output, runs filters, drivers or hooks, or changes Git state. Review requires upstream Git 2.45 or
+later, or a backport that passes the authoritative capability probe. `review` writes only `.context/review/`.
+Exact diagnostics, serialization, Git invocation and packing are implementation-contract details
+for Phase 4.
 
 ## Target repo created by `keystone init`
 
