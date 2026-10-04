@@ -47,7 +47,8 @@ Hand-authored repository context and documentation corrections listed in the fro
 Running full `init`; scaffold placeholders (`agents/`, `reviews/`, `context/` ledgers,
 empty rules and skills, extra adapters); features; ADR migration of D01–D26; generators for
 TASKS.md or ADR indexes; code, schema or SPEC.md changes; optional housekeeping (SETUP.md,
-missing task ID on commit `cb2b754`); and any Phase 4+ design or functionality.
+missing task ID on commit `cb2b754` [factually incorrect; see Correction below]); and any
+Phase 4+ design or functionality.
 
 ## Dependencies
 Phase 0–3 behaviour as accepted in TASK-0001, TASK-0002 and TASK-0004; ADR-0001 governs
@@ -87,3 +88,10 @@ retrospective TASK-0001 record as written on 2026-10-04.
 Accepted on 2026-10-04 with owner authorization. Keystone now holds the minimal context it
 needs to manage itself. Optional housekeeping, scaffold placeholders and Phase 4+ work remain
 out of scope and unimplemented.
+
+## Correction
+Recorded on 2026-10-04 under TASK-0006, with owner authorization, after independent review of
+the TASK-0006 proposal (finding N1). The Out of Scope statement that commit `cb2b754` has a
+missing task ID is false. The commit body reads "TASK-0004; ADR-0001."; only the subject line
+omits the ID. The statement came from inspecting only the one-line log. No housekeeping action
+was needed, and Git history is unchanged. Acceptance and scope of this task are unaffected.
