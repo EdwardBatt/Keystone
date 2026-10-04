@@ -17,6 +17,7 @@ Navigation only. Individual task files in `tasks/` own task facts.
 ## Recently Completed
 | ID | Task | Feature | Status | Priority | ADRs |
 |---|---|---|---|---|---|
+| TASK-0008 | Design Phase 5 CLOSE + Learning | — | accepted | high | ADR-0001, ADR-0002 |
 | TASK-0007 | Implement Phase 4 Review | — | accepted | high | ADR-0001, ADR-0002 |
 | TASK-0006 | Design Phase 4 Review | — | accepted | high | ADR-0001 |
 | TASK-0005 | Bootstrap Keystone self-hosting context | — | accepted | high | — |
