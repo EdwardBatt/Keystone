@@ -3,7 +3,8 @@ import { serialize } from '../core.js';
 
 export const identityFields = ['context_type', 'id', 'schema_version'];
 export const requirementFields = ['adrs', 'depends_on', 'feature', 'features', 'files', 'key_adrs', 'key_rules', 'priority', 'rules', 'skills', 'tags', 'tasks', 'title'];
-export const lifecycleFields = ['completed', 'created', 'status'];
+/** Lifecycle facts, excluded from evidence identity; `closure` is the Phase 5 closure record. */
+export const lifecycleFields = ['closure', 'completed', 'created', 'status'];
 export const requirementSections = ['Objective', 'Acceptance Criteria', 'Scope', 'Out of Scope', 'Dependencies', 'Relevant Files', 'Decisions / ADRs'];
 export const claimSections = ['Implementation Notes', 'Tests', 'Review Findings', 'Outcome'];
 /** Written after review; excluded from evidence identity. */

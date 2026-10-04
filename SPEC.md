@@ -44,7 +44,7 @@ The package exposes `keystone`.
 
 - `keystone init`
 - `keystone start <TASK-ID>`
-- `keystone close <TASK-ID>`
+- `keystone close <TASK-ID> [--promote <ID>]... [--override <reason>]`
 - `keystone validate`
 - `keystone review <TASK-ID> [--type code|architecture|context|all] [--base <rev>]`
 - `keystone compact`

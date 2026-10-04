@@ -33,6 +33,17 @@ the local Git executable for temporary repository discovery fixtures.
   - partition and diff mechanics, and the report contract.
 
   Fixtures are local temporary Git repositories with test-only identity; no network is used.
+- `phase5.test.mjs`: CLOSE, covering:
+  - the three-role current `approve` gate, using real recomputed evidence hashes;
+  - every unsatisfied-gate case (missing, stale, verdicts, invalid reports, invalid latest
+    round);
+  - the owner override (recorded reason, preserved verdicts, never promoting);
+  - explicit, checked, all-or-nothing promotion and unchanged unpromoted candidates;
+  - the closure record and evidence-hash stability;
+  - `already-closed` idempotence;
+  - structural, input and evidence failures;
+  - injected write failure with full restoration;
+  - CLI usage.
 - `fixtures/valid`: a generic target repository covering every supported artifact type.
   Invalid cases are created as explicit mutations of these fixtures in temporary roots.
 

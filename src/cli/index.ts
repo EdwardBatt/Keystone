@@ -5,9 +5,10 @@ import { adapters, initialize, type Adapter } from '../commands/init.js';
 import { contextStatus } from '../commands/status.js';
 import { start } from '../commands/start.js';
 import { review, type ReviewType } from '../commands/review.js';
+import { close } from '../commands/close.js';
 
-const help = `Keystone v0.1 — through Phase 4
-Usage: keystone <index|validate|init|context status|start TASK-ID|review TASK-ID> [--root <directory>] [--json]
+const help = `Keystone v0.1 — through Phase 5
+Usage: keystone <index|validate|init|context status|start TASK-ID|review TASK-ID|close TASK-ID> [--root <directory>] [--json]
 
   index       Validate artifacts and rebuild .context/index.json
   validate    Check artifact schemas, IDs, links, and supersession (read-only)
@@ -16,9 +17,11 @@ Usage: keystone <index|validate|init|context status|start TASK-ID|review TASK-ID
   start TASK-ID   Compile deterministic task context; does not authorize implementation
   review TASK-ID  Prepare isolated review evidence packages; never determines a verdict
               --type code|architecture|context|all (default all), --base <rev> (default HEAD)
+  close TASK-ID   Close after a current three-role approve review gate; never promotes implicitly
+              --promote <ID> (repeatable), --override <reason> (records reason; never alters verdicts)
   --root      Target directory (defaults to the working directory)
               init/status detect its containing Git root; index/validate/start use it directly;
-              review requires the Git top-level
+              review/close require the Git top-level
   --adapter   init only: offer codex, claude, or gemini (repeat to select several)
               AGENTS.md is always created if missing; Claude/Gemini adapters are opt-in
   --force     init only: reset config.yaml; existing project knowledge is preserved
@@ -26,7 +29,7 @@ Usage: keystone <index|validate|init|context status|start TASK-ID|review TASK-ID
   --help      Show this help
   --version   Show the package version
 
-close, compact (Phase 5+) and context explain are not implemented.`;
+compact (Phase 6+) and context explain are not implemented.`;
 
 const args = process.argv.slice(2);
 const json = args.includes('--json');
@@ -51,6 +54,8 @@ async function main(): Promise<void> {
   let force = false;
   let reviewType: ReviewType | undefined;
   let base: string | undefined;
+  const promote: string[] = [];
+  let override: string | undefined;
   const selected: Adapter[] = [];
   const positional: string[] = [];
   for (let i = 0; i < args.length; i++) {
@@ -64,6 +69,12 @@ async function main(): Promise<void> {
       reviewType = args[++i] as ReviewType; continue;
     }
     if (arg === '--base' && base === undefined && args[i + 1] && !args[i + 1].startsWith('-')) { base = args[++i]; continue; }
+    if (arg === '--promote' && args[i + 1] && !args[i + 1].startsWith('-')) { promote.push(args[++i]); continue; }
+    if (arg === '--override' && override === undefined && args[i + 1] !== undefined && !args[i + 1].startsWith('--')) {
+      override = args[++i];
+      if (!override.trim()) fail('CLI_USAGE', '.', '--override requires a non-blank reason.');
+      continue;
+    }
     if (arg === '--adapter' && args[i + 1] && adapters.includes(args[i + 1] as Adapter)) {
       selected.push(args[++i] as Adapter); continue;
     }
@@ -71,9 +82,10 @@ async function main(): Promise<void> {
     fail('CLI_USAGE', '.', `Unexpected argument: ${arg}. Use --help for usage.`);
   }
   command = positional[0];
-  if (['close', 'compact'].includes(command ?? '') || command === 'context' && positional[1] === 'explain') {
-    fail('COMMAND_NOT_IMPLEMENTED', '.', `${positional.join(' ')} is outside Phase 4.`);
+  if (command === 'compact' || command === 'context' && positional[1] === 'explain') {
+    fail('COMMAND_NOT_IMPLEMENTED', '.', `${positional.join(' ')} is outside Phase 5.`);
   }
+  if (command !== 'close' && (promote.length || override !== undefined)) fail('CLI_USAGE', '.', '--promote and --override are only supported by close.');
   if (command !== 'review' && (reviewType !== undefined || base !== undefined)) fail('CLI_USAGE', '.', '--type and --base are only supported by review.');
   if (command !== 'init' && (force || selected.length)) fail('CLI_USAGE', '.', '--force and --adapter are only supported by init.');
   if (command === 'start') {
@@ -88,6 +100,19 @@ async function main(): Promise<void> {
       if (result.envelope?.omissions.length) console.log(`${result.envelope.omissions.length} body omission(s); inspect envelope for reasons.`);
     }
     process.exitCode = result.outcome === 'complete' ? 0 : result.outcome === 'failed' ? 2 : 1;
+    return;
+  }
+  if (command === 'close') {
+    if (positional.length !== 2) fail('CLI_USAGE', '.', 'Expected close TASK-ID.');
+    const result = await close(root, positional[1], { promote, override });
+    if (json) console.log(JSON.stringify({ command, ok: result.outcome === 'closed' || result.outcome === 'already-closed', ...result }));
+    else {
+      console.log(`CLOSE ${result.task_id}: ${result.outcome}${result.gate ? ` (review gate ${result.gate})` : ''}.`);
+      for (const d of result.diagnostics) console.error(`${d.code} ${d.path}: ${d.message}`);
+      if (result.promoted.length) console.log(`Promoted: ${result.promoted.join(', ')}`);
+      if (result.unpromoted.length) console.log(`Remaining candidates: ${result.unpromoted.join(', ')}`);
+    }
+    process.exitCode = result.outcome === 'closed' || result.outcome === 'already-closed' ? 0 : result.outcome === 'blocked' ? 1 : 2;
     return;
   }
   if (command === 'review') {

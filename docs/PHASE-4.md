@@ -68,7 +68,9 @@ node dist/cli/index.js review TASK-0001 [--type code|architecture|context|all] [
   - identity: `context_type`, `schema_version`, `id`;
   - requirement: `title`, `priority`, `tags`, `feature`, `features`, `depends_on`, `adrs`,
     `key_adrs`, `rules`, `key_rules`, `skills`, `files`, `tasks`;
-  - lifecycle: `status`, `created`, `completed`, reported as facts;
+  - lifecycle: `status`, `created`, `completed`, and the Phase 5 `closure` record (added by
+    TASK-0009), reported as facts. Writing the closure record cannot change the evidence
+    identity it records;
   - unrecognised: everything else.
 - **Body partition**, on level-2 ATX headings outside fences:
   - requirement sections: `Objective`, `Acceptance Criteria`, `Scope`, `Out of Scope`,
@@ -154,7 +156,7 @@ node dist/cli/index.js review TASK-0001 [--type code|architecture|context|all] [
   - the base context selection, quarantine, gaps, outcome and diagnostics;
   - every charter's provenance and hash.
 - **Excluded from the hash:**
-  - lifecycle fields;
+  - lifecycle fields, including the Phase 5 `closure` record;
   - commit flags (so committing work or reports does not change the hash, C2);
   - working-tree validation, index freshness and round numbers;
   - all package content bodies.
