@@ -19,6 +19,28 @@
     "schema_version": {
       "const": 1
     },
+    "superseded_by": {
+      "$ref": "urn:keystone:schema:common:1#/$defs/stringList"
+    },
+    "retirement": {
+      "type": "object",
+      "required": [
+        "task",
+        "reason"
+      ],
+      "properties": {
+        "task": {
+          "$ref": "urn:keystone:schema:common:1#/$defs/nonemptyString"
+        },
+        "reason": {
+          "$ref": "urn:keystone:schema:common:1#/$defs/nonblankString"
+        },
+        "previous_status": {
+          "$ref": "urn:keystone:schema:common:1#/$defs/nonblankString"
+        }
+      },
+      "additionalProperties": false
+    },
     "id": {
       "$ref": "urn:keystone:schema:common:1#/$defs/metadata/properties/id"
     },

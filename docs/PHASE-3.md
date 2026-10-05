@@ -19,6 +19,11 @@ hop, whose role stays non-binding. Only active direct features anchor reverse as
 Unknown authority is diagnosed; mandatory uncertainty and unknown active-trap severity
 make the result incomplete. Only medium severity is classified, at Tier 2.
 
+Phase 6 (ADR-0003, TASK-0011): `retired` learnings and traps are known, never-binding history.
+Any path that reaches one, including task-relevant reverse associations, gives it the `history`
+role at Tier 3 with no `START_AUTHORITY_UNKNOWN` diagnostic, so budget packing may omit it
+visibly. Candidates and proposed traps are still not reverse-selected.
+
 ## Content and identity
 
 Existing portable path checks, exact case, graph ID-first/path-second resolution and

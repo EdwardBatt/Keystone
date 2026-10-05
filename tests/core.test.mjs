@@ -208,7 +208,7 @@ test('one-sided supersession works without imposing lifecycle or reciprocal-fiel
   assert.deepEqual((await inspect(root)).diagnostics, []);
 });
 
-test('only ADRs interpret supersession; other types retain the fields as uninterpreted extensions', async t => {
+test('ADRs interpret supersession; learnings and traps interpret only superseded_by; other fields stay uninterpreted', async t => {
   const root = await temporary(t);
   const examples = [
     ['project', 'PROJECT.md', { project_id: 'fixture-project', status: 'active' }],
@@ -219,8 +219,11 @@ test('only ADRs interpret supersession; other types retain the fields as uninter
     ['rule', 'rules/GLOBAL.md', {}],
     ['skill', 'skills/testing.md', {}],
   ];
+  // ADR-0003 types `superseded_by` on learnings and traps; `supersedes` stays uninterpreted on them.
+  const retirable = new Set(['learning', 'trap']);
   for (const [type, file, fields] of examples) {
-    await put(root, file, artifact(type, { ...fields, supersedes: ['DOES-NOT-EXIST'], superseded_by: { extension: 'not an ADR relationship' } }));
+    await put(root, file, artifact(type, { ...fields, supersedes: ['DOES-NOT-EXIST'],
+      ...(retirable.has(type) ? {} : { superseded_by: { extension: 'not an ADR relationship' } }) }));
   }
   const result = await inspect(root);
   assert.deepEqual(result.diagnostics, []);
@@ -228,7 +231,7 @@ test('only ADRs interpret supersession; other types retain the fields as uninter
   assert.ok(result.index.links.filter(link => link.field.startsWith('supersed')).every(link => adrs.has(link.source) && adrs.has(link.target)));
   for (const entry of result.index.artifacts.filter(a => a.type !== 'adr')) {
     assert.deepEqual(entry.metadata.supersedes, ['DOES-NOT-EXIST']);
-    assert.deepEqual(entry.metadata.superseded_by, { extension: 'not an ADR relationship' });
+    if (!retirable.has(entry.type)) assert.deepEqual(entry.metadata.superseded_by, { extension: 'not an ADR relationship' });
   }
 });
 

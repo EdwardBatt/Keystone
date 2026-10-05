@@ -44,6 +44,22 @@ the local Git executable for temporary repository discovery fixtures.
   - structural, input and evidence failures;
   - injected write failure with full restoration;
   - CLI usage.
+- `phase6.test.mjs`: COMPACT and ADR-0003 retirement, covering:
+  - the read-only, reproducible report and its deterministic signals;
+  - retirement with and without successors, and START treating retired knowledge as history;
+  - every blocking check (successor provenance, type, eligibility, cycles, artifact types,
+    task status) and all-or-nothing behaviour;
+  - CLI usage, idempotent re-runs and terminal retirement;
+  - injected write failures with full restoration;
+  - visible binding removals when a successor is retired (owner decision I1);
+  - the standing validation invariants, including `superseded_by` on live knowledge (I2);
+  - CLOSE refusing to promote retired knowledge, and paths with spaces without Git.
+  - review remediation: generated trap `files` in containment, truthful rollback and leftover
+    temporary-file reporting, byte-for-byte preservation (BOM, CRLF, lone CR, flow style),
+    severity-aware binding reporting and flag precedence on `context explain`;
+  - multi-successor branching and every retirement-specific START history path;
+  - report grouping with hostile-but-valid task and feature IDs (`constructor`, `toString`,
+    `hasOwnProperty` and other inherited member names), read-only and with retirement.
 - `fixtures/valid`: a generic target repository covering every supported artifact type.
   Invalid cases are created as explicit mutations of these fixtures in temporary roots.
 

@@ -135,6 +135,7 @@ relative to the target root, not the declaring document. Normalized links use ta
 | `skills` | Skill |
 | `depends_on` | Same artifact type as the source |
 | `supersedes`, `superseded_by` (ADRs only) | ADR |
+| `superseded_by` (learnings and traps; ADR-0003) | Same artifact type as the source |
 | `files` | Existing regular file inside the target root, except generated mentions below |
 
 Missing and ambiguous targets, wrong target types, and invalid paths are errors. Rules and
@@ -152,8 +153,23 @@ ADR supersession forms an older-to-newer graph. Either direction can declare an 
 declarations describe the same edge. Self-supersession and cycles are errors. There is no
 undocumented requirement to change status, provide reciprocal fields, or have only one
 successor. Dependency-cycle or semantic-authority policies are not added in this phase.
-On non-ADR artifacts, `supersedes` and `superseded_by` remain uninterpreted extension metadata:
-they create no links, impose no schema constraints, and trigger no supersession validation.
+On projects, tasks, features, rules and skills, `supersedes` and `superseded_by` remain
+uninterpreted extension metadata: they create no links, impose no schema constraints, and trigger
+no supersession validation. On learnings and traps, `supersedes` remains uninterpreted.
+
+Phase 6 (TASK-0011) adds the ADR-0003 standing invariants for learnings and traps:
+- `superseded_by` is a list of IDs or paths of the same type. Self-reference and cycles use the
+  supersession codes above. A non-empty list is valid only on a `retired` artifact
+  (`SUPERSESSION_NOT_RETIRED`); an empty list declares nothing.
+- A `retired` artifact needs a `retirement` record `{ task, reason, previous_status? }`
+  (`RETIREMENT_RECORD_MISSING`). A record on any other status is `RETIREMENT_RECORD_UNEXPECTED`,
+  because retirement is terminal. The shape is schema-checked (`SCHEMA_INVALID`), and `task` must
+  resolve to a task (`LINK_MISSING`, `LINK_AMBIGUOUS` or `LINK_TYPE_MISMATCH` on field
+  `retirement.task`). The record creates no index link.
+- Every named successor contains the predecessor's resolved `tasks` and its `evidence` strings,
+  and for traps every declared `files` path, normalized but including generated paths that create
+  no graph edge (`SUCCESSION_CONTAINMENT_BROKEN`, reported on the successor). The check runs whenever validation runs, not only when COMPACT applies a
+  retirement.
 
 ## Determinism and write protection
 
@@ -216,6 +232,10 @@ or adversarial filesystem security infrastructure.
 | `FILE_NOT_REGULAR` | File reference points at a directory or special file |
 | `SUPERSESSION_SELF` | An artifact supersedes itself |
 | `SUPERSESSION_CYCLE` | Supersession declarations form a cycle |
+| `SUPERSESSION_NOT_RETIRED` | A learning or trap that is not retired declares `superseded_by` (Phase 6) |
+| `RETIREMENT_RECORD_MISSING` | A retired learning or trap has no retirement record (Phase 6) |
+| `RETIREMENT_RECORD_UNEXPECTED` | A learning or trap that is not retired has a retirement record (Phase 6) |
+| `SUCCESSION_CONTAINMENT_BROKEN` | A successor lacks its predecessor's tasks, evidence or (traps) files (Phase 6) |
 | `INDEX_INVALID` | Core API refuses to write a failed inspection |
 | `INDEX_OVERWRITE_REFUSED` | Existing output is not a recognized generated index |
 

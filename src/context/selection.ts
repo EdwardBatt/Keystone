@@ -13,6 +13,8 @@ export function eligible(a: Artifact): boolean {
     default: return status === 'active';
   }
 }
+/** Retired learnings and traps are known, never-binding history (ADR-0003). */
+export const retired = (a: Artifact) => (a.type === 'learning' || a.type === 'trap') && a.metadata.status === 'retired';
 const knownReview = (a: Artifact) => a.metadata.status === 'proposed' ||
   a.type === 'learning' && a.metadata.status === 'candidate' ||
   ['rule', 'skill'].includes(a.type) && a.metadata.status === 'draft';
@@ -109,12 +111,14 @@ export function select(task: Artifact, artifacts: Artifact[], links: Link[], exp
   function reviewHop(a: Artifact) {
     for (const l of outgoing(a)) {
       const t = target(l);
-      if (t) add(t, 2, 'review', a.id, l.field);
+      if (t && retired(t)) add(t, 3, 'history', a.id, l.field);
+      else if (t) add(t, 2, 'review', a.id, l.field);
       else if (l.kind === 'file') file(l, 3, 'evidence');
     }
   }
   function choose(a: Artifact, tier: number, source: string, field: string, direct = false, mandatory = false) {
     if (a.type === 'adr' && historical(a)) { resolve(a, tier, source, field); return; }
+    if (retired(a)) { add(a, 3, 'history', source, field); return; }
     if (!eligible(a)) {
       add(a, mandatory ? 0 : direct ? 1 : tier, 'review', source, field);
       if (!knownReview(a)) diagnose('START_AUTHORITY_UNKNOWN', a, 'Authority state is not eligible for binding context.', mandatory);
@@ -188,7 +192,7 @@ export function select(task: Artifact, artifacts: Artifact[], links: Link[], exp
     else file(l, 3, 'evidence');
   }
   const rootFiles = new Set(outgoing(task, ['files']).map(l => l.target));
-  for (const a of artifacts.filter(a => ['learning', 'trap'].includes(a.type) && eligible(a))) {
+  for (const a of artifacts.filter(a => ['learning', 'trap'].includes(a.type) && (eligible(a) || retired(a)))) {
     for (const l of outgoing(a)) {
       if (l.field === 'tasks' && l.target === task.id || l.field === 'features' && directFeatures.has(l.target) || a.type === 'trap' && l.field === 'files' && rootFiles.has(l.target)) {
         choose(a, 2, l.target, `reverse:${l.field}`);

@@ -1,6 +1,6 @@
 # Keystone
 
-**v0.1 through Phase 5 — approved architecture baseline, 13 September 2026**
+**v0.1 through Phase 6 — approved architecture baseline, 13 September 2026**
 
 Keystone is a repo-native context and continuity system for AI-assisted software development.
 
@@ -22,7 +22,9 @@ Phase 3 adds deterministic START context compilation under ADR-0001. Phase 4 add
 `review`, which prepares isolated code/architecture/context review evidence under ADR-0002.
 Phase 5 adds `close`, which completes a task after a current three-role `approve` review gate
 (or a recorded owner override) and promotes only explicitly requested candidate learnings and
-traps. Phase 6 and later, and `context explain`, remain unimplemented.
+traps. Phase 6 adds `compact`, a read-only compaction report that, given explicit task-bound
+operations, retires learnings and traps in place under ADR-0003 while preserving their evidence
+and provenance chain. Phase 7 and later, and `context explain`, remain unimplemented.
 
 ```powershell
 npm ci
@@ -36,6 +38,8 @@ node dist/cli/index.js index --root "C:\path\to\target" --json
 node dist/cli/index.js start TASK-0001 --root "C:\path\to\target" --json
 node dist/cli/index.js review TASK-0001 --base HEAD --root "C:\path\to\repo" --json
 node dist/cli/index.js close TASK-0001 --promote LRN-0001 --root "C:\path\to\repo" --json
+node dist/cli/index.js compact --root "C:\path\to\repo" --json
+node dist/cli/index.js compact --task TASK-0002 --retire LRN-0001 --reason "Consolidated." --by LRN-0002 --root "C:\path\to\repo" --json
 ```
 
 Read [Phase 0/1 usage and error codes](docs/PHASE-0-1.md) for discovery, metadata, link,
@@ -47,5 +51,7 @@ See [Phase 4 implementation contract](docs/PHASE-4.md) for review evidence packa
 determines a verdict or implementation readiness.
 See [Phase 5 implementation contract](docs/PHASE-5.md) for the CLOSE gate, owner override,
 controlled promotion and the closure record.
+See [Phase 6 implementation contract](docs/PHASE-6.md) for compaction reporting, retirement
+checks, binding-removal visibility and the ADR-0003 validation invariants.
 See [Phase 3 implementation contract](docs/PHASE-3.md) for selection, outcomes, budget behavior,
 and generated-envelope replacement. START compilation never authorizes implementation.

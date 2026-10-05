@@ -6,9 +6,10 @@ import { contextStatus } from '../commands/status.js';
 import { start } from '../commands/start.js';
 import { review, type ReviewType } from '../commands/review.js';
 import { close } from '../commands/close.js';
+import { compact, type RetireRequest } from '../commands/compact.js';
 
-const help = `Keystone v0.1 — through Phase 5
-Usage: keystone <index|validate|init|context status|start TASK-ID|review TASK-ID|close TASK-ID> [--root <directory>] [--json]
+const help = `Keystone v0.1 — through Phase 6
+Usage: keystone <index|validate|init|context status|start TASK-ID|review TASK-ID|close TASK-ID|compact> [--root <directory>] [--json]
 
   index       Validate artifacts and rebuild .context/index.json
   validate    Check artifact schemas, IDs, links, and supersession (read-only)
@@ -19,8 +20,11 @@ Usage: keystone <index|validate|init|context status|start TASK-ID|review TASK-ID
               --type code|architecture|context|all (default all), --base <rev> (default HEAD)
   close TASK-ID   Close after a current three-role approve review gate; never promotes implicitly
               --promote <ID> (repeatable), --override <reason> (records reason; never alters verdicts)
+  compact     Report compaction signals (read-only); with operations, retire learnings or traps
+              --task <TASK-ID> (an active task) with one or more groups of
+              --retire <ID> --reason <text> [--by <successor ID>]; all-or-nothing, never deletes
   --root      Target directory (defaults to the working directory)
-              init/status detect its containing Git root; index/validate/start use it directly;
+              init/status detect its containing Git root; index/validate/start/compact use it directly;
               review/close require the Git top-level
   --adapter   init only: offer codex, claude, or gemini (repeat to select several)
               AGENTS.md is always created if missing; Claude/Gemini adapters are opt-in
@@ -29,7 +33,7 @@ Usage: keystone <index|validate|init|context status|start TASK-ID|review TASK-ID
   --help      Show this help
   --version   Show the package version
 
-compact (Phase 6+) and context explain are not implemented.`;
+context explain is not implemented.`;
 
 const args = process.argv.slice(2);
 const json = args.includes('--json');
@@ -56,6 +60,9 @@ async function main(): Promise<void> {
   let base: string | undefined;
   const promote: string[] = [];
   let override: string | undefined;
+  let compactTask: string | undefined;
+  const retire: RetireRequest[] = [];
+  const takes = (i: number) => args[i + 1] !== undefined && !args[i + 1].startsWith('--');
   const selected: Adapter[] = [];
   const positional: string[] = [];
   for (let i = 0; i < args.length; i++) {
@@ -75,6 +82,21 @@ async function main(): Promise<void> {
       if (!override.trim()) fail('CLI_USAGE', '.', '--override requires a non-blank reason.');
       continue;
     }
+    if (arg === '--task' && compactTask === undefined && takes(i) && args[i + 1].trim()) { compactTask = args[++i]; continue; }
+    if (arg === '--retire' && takes(i)) { retire.push({ id: args[++i], reason: '' }); continue; }
+    if (arg === '--reason' && takes(i)) {
+      const current = retire.at(-1);
+      if (!current || current.reason) fail('CLI_USAGE', '.', '--reason must follow its --retire, once.');
+      current.reason = args[++i];
+      if (!current.reason.trim()) fail('CLI_USAGE', '.', '--reason requires a non-blank reason.');
+      continue;
+    }
+    if (arg === '--by' && takes(i)) {
+      const current = retire.at(-1);
+      if (!current || current.by !== undefined) fail('CLI_USAGE', '.', '--by must follow its --retire, once.');
+      current.by = args[++i];
+      continue;
+    }
     if (arg === '--adapter' && args[i + 1] && adapters.includes(args[i + 1] as Adapter)) {
       selected.push(args[++i] as Adapter); continue;
     }
@@ -82,8 +104,10 @@ async function main(): Promise<void> {
     fail('CLI_USAGE', '.', `Unexpected argument: ${arg}. Use --help for usage.`);
   }
   command = positional[0];
-  if (command === 'compact' || command === 'context' && positional[1] === 'explain') {
-    fail('COMMAND_NOT_IMPLEMENTED', '.', `${positional.join(' ')} is outside Phase 5.`);
+  // Flag scope is a usage error even on commands that are not implemented.
+  if (command !== 'compact' && (compactTask !== undefined || retire.length)) fail('CLI_USAGE', '.', '--task, --retire, --reason and --by are only supported by compact.');
+  if (command === 'context' && positional[1] === 'explain') {
+    fail('COMMAND_NOT_IMPLEMENTED', '.', `${positional.join(' ')} is outside Phase 6.`);
   }
   if (command !== 'close' && (promote.length || override !== undefined)) fail('CLI_USAGE', '.', '--promote and --override are only supported by close.');
   if (command !== 'review' && (reviewType !== undefined || base !== undefined)) fail('CLI_USAGE', '.', '--type and --base are only supported by review.');
@@ -113,6 +137,29 @@ async function main(): Promise<void> {
       if (result.unpromoted.length) console.log(`Remaining candidates: ${result.unpromoted.join(', ')}`);
     }
     process.exitCode = result.outcome === 'closed' || result.outcome === 'already-closed' ? 0 : result.outcome === 'blocked' ? 1 : 2;
+    return;
+  }
+  if (command === 'compact') {
+    if (positional.length !== 1) fail('CLI_USAGE', '.', 'Expected compact with no positional arguments.');
+    if (retire.some(r => !r.reason)) fail('CLI_USAGE', '.', 'Each --retire requires a non-blank --reason.');
+    if (retire.length && compactTask === undefined) fail('CLI_USAGE', '.', 'Retirement operations require --task <TASK-ID>.');
+    if (!retire.length && compactTask !== undefined) fail('CLI_USAGE', '.', '--task applies only to retirement operations.');
+    const result = await compact(root, { task: compactTask, retire });
+    const ok = ['reported', 'compacted', 'unchanged'].includes(result.outcome);
+    if (json) console.log(JSON.stringify({ command, ok, ...result }));
+    else {
+      console.log(`COMPACT: ${result.outcome}.`);
+      for (const d of result.diagnostics) console.error(`${d.code} ${d.path}: ${d.message}`);
+      if (result.retired.length) console.log(`Retired: ${result.retired.join(', ')}`);
+      if (result.unchanged.length) console.log(`Already retired identically: ${result.unchanged.join(', ')}`);
+      if (result.report) {
+        const r = result.report;
+        console.log(`Stale candidates: ${r.stale_candidates.map(c => c.id).join(', ') || 'none'}`);
+        console.log(`Retired: ${r.retired.length}. Binding removals: ${r.binding_removals.join(', ') || 'none'}`);
+        console.log(`Binding knowledge by task: ${Object.entries(r.binding.by_task).map(([task, ids]) => `${task} (${ids.length})`).join(', ') || 'none'}`);
+      }
+    }
+    process.exitCode = ok ? 0 : result.outcome === 'blocked' ? 1 : 2;
     return;
   }
   if (command === 'review') {
