@@ -17,6 +17,7 @@ Navigation only. Individual task files in `tasks/` own task facts.
 ## Recently Completed
 | ID | Task | Feature | Status | Priority | ADRs |
 |---|---|---|---|---|---|
+| TASK-0012 | Design Phase 7 Benchmark Harness | — | accepted | high | ADR-0001, ADR-0002, ADR-0003, ADR-0004 |
 | TASK-0011 | Implement Phase 6 COMPACT | — | accepted | high | ADR-0001, ADR-0002, ADR-0003 |
 | TASK-0010 | Design Phase 6 COMPACT | — | accepted | high | ADR-0001, ADR-0002, ADR-0003 |
 | TASK-0009 | Implement Phase 5 CLOSE + Learning | — | accepted | high | ADR-0001, ADR-0002 |

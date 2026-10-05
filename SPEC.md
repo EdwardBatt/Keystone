@@ -35,7 +35,7 @@ supports independent review, and controls promotion/compaction of learned knowle
 ## Framework layout
 
 The scaffold repository layout is the implementation baseline:
-`src/{cli,commands,context,parser,graph,validation,review,compaction,telemetry,adapters}`,
+`src/{cli,commands,context,parser,graph,validation,review,compaction,telemetry,adapters,benchmark}`,
 `schemas`, `templates`, `adapters/{claude,codex,gemini}`, `benchmark`, and `tests`.
 
 ## CLI contracts
@@ -51,6 +51,18 @@ The package exposes `keystone`.
 - `keystone index`
 - `keystone context status`
 - `keystone context explain <ID>`
+
+The package also exposes the benchmark harness executable `keystone-bench` (ADR-0004). It is
+separate from the `keystone` protocol CLI, whose commands remain offline, model-free and unchanged.
+
+- `keystone-bench validate`
+- `keystone-bench prepare <plan>`
+- `keystone-bench run <plan> [--run <run-id>]...`
+- `keystone-bench record <run-id>`
+- `keystone-bench score <plan>`
+- `keystone-bench report <plan>`
+
+Exact arguments and flags are Phase 7 implementation-contract details.
 
 `init` must detect the Git root, create `.context/config.yaml`, avoid overwrite without explicit
 `--force`, offer thin adapters, and validate at the end.
@@ -101,8 +113,10 @@ content is retained despite the 8,000-token target, with deterministic omissions
 tiers. Exact serialization, diagnostics, packing and atomic replacement are implementation-contract
 details for Phase 3.
 
-ADR-0002 supplements this contract with one rule: the root-level `reviews/` directory, compared
-case-insensitively, is ineligible for START.
+ADR-0002 and ADR-0004 supplement this contract: the root-level `reviews/`, `benchmark/results/`
+and `benchmark/analysis/` directories, compared case-insensitively, are never discovered, are
+invalid as configured discovery sources, and are ineligible for START and review-context
+selection through every path.
 
 ## Review evidence
 
@@ -170,6 +184,37 @@ review and CLOSE then cover the edits. Every check completes before any write, a
 retirements apply all-or-nothing. `compact` works offline and writes only the retired artifacts
 and disposable generated state under `.context/`. Exact record fields, report contents,
 diagnostics, outcomes and write mechanics are implementation-contract details for Phase 6.
+
+## Benchmark harness
+
+ADR-0004 records the Phase 7 harness guarantees. `keystone-bench` is reusable measurement
+infrastructure; it makes no claim about Keystone's value. Experiments, starting with Phase 8,
+supply the subject repository, task content, conditions, agent profiles and parameters through an
+experiment plan. The plan is fixed before its runs begin. Every recorded run and result identifies
+the exact plan it used through immutable provenance, sufficient to detect any later change to
+that plan. Application-specific task content stays in its subject repository.
+
+Only `keystone-bench` runs may launch external programs: the declared agent commands, condition
+setup and task oracles, inside the run's workspace. A manual profile is equally supported.
+Keystone contains no model-provider code or credentials. Every run uses its own fresh local clone
+of the subject at a pinned commit (D23). The source subject is never modified.
+
+The harness is neutral between conditions. It never requires, installs or privileges Keystone in
+a measured workspace. Conditions are peer declarative definitions. Every condition in an experiment
+receives the same tasks, oracles, agent profiles, limits, instrumentation and scoring.
+Condition-specific measures are diagnostics, outside cross-condition comparison. Judged measures
+use one blinded, condition-neutral procedure.
+
+Telemetry is opt-in, local and content-free. It is captured by the harness outside the measured
+workspace. Protocol commands never record it and keep their read-only semantics.
+`src/telemetry` stays reserved and unused in Phase 7; harness instrumentation belongs under
+`src/benchmark`. Measures are labelled `deterministic`, `reported` or `judged`, and form a balanced
+scorecard (D24), with a composite only from weights declared in an experiment plan.
+
+Results are durable, non-authoritative records under `benchmark/results/`; summaries under
+`benchmark/analysis/` are generated. Both are excluded from discovery and START as stated above. A
+real-agent smoke run verifies integration only and is never benchmark evidence.
+`docs/PHASE-7.md` specifies the implementation mechanisms.
 
 ## Target repo created by `keystone init`
 
