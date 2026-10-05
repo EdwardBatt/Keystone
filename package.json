@@ -2,6 +2,7 @@
   "name": "keystone",
   "version": "0.1.0",
   "private": true,
+  "license": "SEE LICENSE IN LICENSE",
   "description": "Repo-native context and continuity system for AI-assisted software development",
   "type": "module",
   "bin": {

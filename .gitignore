@@ -7,3 +7,15 @@ coverage/
 # Disposable generated state; configuration remains authoritative and trackable.
 /.context/*
 !/.context/config.yaml
+
+# Precautionary: never commit secrets, local packages or editor/agent state.
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.tgz
+.vscode/
+.idea/
+Thumbs.db
+.claude/
