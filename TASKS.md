@@ -5,6 +5,7 @@ Navigation only. Individual task files in `tasks/` own task facts.
 ## Active
 | ID | Task | Feature | Status | Priority | ADRs |
 |---|---|---|---|---|---|
+| TASK-0010 | Design Phase 6 COMPACT | — | active | high | ADR-0001, ADR-0002 |
 
 ## Review
 | ID | Task | Feature | Status | Priority | ADRs |
