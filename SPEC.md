@@ -47,7 +47,7 @@ The package exposes `keystone`.
 - `keystone close <TASK-ID> [--promote <ID>]... [--override <reason>]`
 - `keystone validate`
 - `keystone review <TASK-ID> [--type code|architecture|context|all] [--base <rev>]`
-- `keystone compact`
+- `keystone compact [--task <TASK-ID> (--retire <ID> --reason <text> [--by <ID>])...]`
 - `keystone index`
 - `keystone context status`
 - `keystone context explain <ID>`
@@ -138,6 +138,38 @@ Verdicts are `approve`, `changes-requested` and `inconclusive`. Phase 5 defines 
 staleness mean for CLOSE.
 
 `docs/PHASE-4.md` specifies the implementation mechanisms.
+
+## Compaction and retirement
+
+ADR-0003 records the Phase 6 compaction guarantees. Compaction acts only on learnings and traps.
+It never changes ADRs, which keep ADR-0001 supersession, rules, skills, projects, features,
+tasks, reviewer records, `TASKS.md`, the `context/` placeholder files, Git history or Git
+repository state. Keystone calls no model and never decides what to retire.
+
+`retired` is a terminal status for learnings and traps (supplementing ADR-0001). A retired
+artifact never binds START through any path. START treats it as known non-binding history, not
+as unknown authority. CLOSE never promotes it, and it cannot be reinstated in v0.1. CLOSE never
+retires a candidate: candidates are disposed of only through explicit retirement, and there is
+no `rejected` state.
+
+Retirement is in place. It never deletes, moves or rewrites knowledge, and location confers no
+authority. Each retired artifact carries a retirement record naming its authorizing task and a
+non-blank reason. It may name successors through `superseded_by`, which on learnings and traps
+is a typed link to an artifact of the same type and must not form a cycle. Successors are not
+edited by retirement. `supersedes` remains uninterpreted on learnings and traps.
+
+The evidence and provenance chain is a standing structural invariant: every named successor
+contains all of the retired artifact's `tasks` and `evidence` entries and, for traps, all of its
+`files` entries. Validation reports a retired artifact without a valid record, or a successor
+that breaks containment, as an error. When a retirement is applied, each successor must be
+eligible: an `accepted` learning, or an `active` trap with classified severity.
+
+Without an operation, `compact` is a read-only report of deterministic signals. Retirement
+operations name each ID with a reason and run under an existing task with status `active`, whose
+review and CLOSE then cover the edits. Every check completes before any write, and requested
+retirements apply all-or-nothing. `compact` works offline and writes only the retired artifacts
+and disposable generated state under `.context/`. Exact record fields, report contents,
+diagnostics, outcomes and write mechanics are implementation-contract details for Phase 6.
 
 ## Target repo created by `keystone init`
 

@@ -5,7 +5,6 @@ Navigation only. Individual task files in `tasks/` own task facts.
 ## Active
 | ID | Task | Feature | Status | Priority | ADRs |
 |---|---|---|---|---|---|
-| TASK-0010 | Design Phase 6 COMPACT | — | active | high | ADR-0001, ADR-0002 |
 
 ## Review
 | ID | Task | Feature | Status | Priority | ADRs |
@@ -18,6 +17,7 @@ Navigation only. Individual task files in `tasks/` own task facts.
 ## Recently Completed
 | ID | Task | Feature | Status | Priority | ADRs |
 |---|---|---|---|---|---|
+| TASK-0010 | Design Phase 6 COMPACT | — | accepted | high | ADR-0001, ADR-0002, ADR-0003 |
 | TASK-0009 | Implement Phase 5 CLOSE + Learning | — | accepted | high | ADR-0001, ADR-0002 |
 | TASK-0008 | Design Phase 5 CLOSE + Learning | — | accepted | high | ADR-0001, ADR-0002 |
 | TASK-0007 | Implement Phase 4 Review | — | accepted | high | ADR-0001, ADR-0002 |

@@ -7,3 +7,4 @@ Maintained by hand; individual ADR files are authoritative. Baseline decisions D
 |---|---|---|---|---|---|
 | [ADR-0001](ADR-0001-start-context-eligibility.md) | START context eligibility and effective-context selection | accepted | 2026-09-17 | — | — |
 | [ADR-0002](ADR-0002-review-evidence-and-reviewer-records.md) | Review evidence and reviewer records | accepted | 2026-10-04 | — | — |
+| [ADR-0003](ADR-0003-retirement-of-learnings-and-traps.md) | Retirement of learnings and traps | accepted | 2026-10-05 | — | — |

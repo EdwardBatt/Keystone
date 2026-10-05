@@ -1,11 +1,34 @@
 # TASK-0010 — Phase 6 COMPACT design notes
 
-**NON-AUTHORITATIVE DESIGN RECORD — revision 1, prepared for owner review on 2026-10-05.**
-It does not authorize implementation, adopt architecture or create an ADR. SPEC.md, D01–D26,
-PROJECT.md, ADR-0001, ADR-0002 and the accepted TASK-0008 contract are the authority. These notes
-derive what they already decide, then set out options, trade-offs and a recommendation for each
-open decision (C1–C6). Nothing below the "Already decided" section is settled until the owner
-resolves it.
+**NON-AUTHORITATIVE DESIGN RECORD — revision 3, accepted with TASK-0010 on 2026-10-05.**
+It does not authorize implementation, which belongs to a separately authorized Phase 6
+implementation task. The authority is:
+- SPEC.md, including its "Compaction and retirement" section;
+- D01–D26 and PROJECT.md;
+- ADR-0001, ADR-0002 and ADR-0003, which the owner adopted on 2026-10-05;
+- the accepted TASK-0008 contract.
+
+These notes derive what is already decided, set out options and trade-offs for decisions C1–C6,
+and record the owner's resolution of each. Mechanisms here are implementation guidance, except
+where ADR-0003 or SPEC.md retains them.
+
+## Owner resolution (2026-10-05)
+
+| Decision | Resolution |
+|---|---|
+| C1 | (b): TASK-0008 decision 3(a) governs CLOSE. Phase 6 disposes of candidates only through the general retirement state, applied explicitly with a reason. |
+| C2 | (a): one terminal `retired` status for learnings and traps, a retirement record, and typed same-type `superseded_by` links. Requires an ADR: ADR-0003, adopted on 2026-10-05. |
+| C3 | (a): retire in place; COMPACT never moves or deletes files. |
+| C4 | (a): COMPACT writes none of the `context/*.md` files. |
+| C5 | (b): read-only report by default; explicit, checked, all-or-nothing operations. |
+| C6 | (b): every write names an existing `active` task. |
+| Successor safety | Approved as set out under "Deterministic checks". Retirement must preserve the required evidence and provenance chain. |
+
+ADR-0003 additionally makes successor containment (`tasks`, `evidence`, and `files` for traps) a
+standing validation invariant, not only a check when retirement is applied. The owner adopted
+ADR-0003 as written, including that invariant, on 2026-10-05.
+
+The "Open decisions" section below is kept as the analysis record from revision 1.
 
 ## Objective
 
@@ -66,7 +89,7 @@ CLI (SPEC.md): `keystone compact`. SPEC acceptance baseline: "compact safely".
 ## Open decisions
 
 Each decision lists options, trade-offs and a recommendation. The recommendations are designed to
-fit together; the combined result is in "Recommended Phase 6 contract" below.
+fit together; the combined result is in "Phase 6 contract" below.
 
 ### C1 — Disposition of unpromoted candidates versus TASK-0008 decision 3(a)
 
@@ -156,7 +179,7 @@ preserves the predecessor's traceability.
 The same-type eligible-successor and evidence-superset checks (below) prevent a binding guard from
 being dropped silently.
 
-## Recommended Phase 6 contract (if C1–C6 are accepted as recommended)
+## Phase 6 contract (C1–C6 as resolved; ADR-0003 adopted)
 
 ### Command
 
@@ -223,17 +246,18 @@ generated state under `.context/`. It reports when hand-maintained navigation ne
 
 ## Architectural impact
 
-If C2(a) is accepted, an ADR is required (provisionally ADR-0003, "Retirement of learnings and
-traps"). It would:
-- add `retired` to the recognised learning and trap vocabulary and define its START role
-  (supplementing ADR-0001 §2 and §7);
-- make `superseded_by` a typed same-type link on learnings and traps;
-- record the owner's reading of TASK-0008 decision 3(a) (C1).
+C2(a) required an ADR. ADR-0003, "Retirement of learnings and traps", was adopted on 2026-10-05.
+It supplements ADR-0001 §2 and §3 and clarifies TASK-0008 decision 3(a). It retains durable
+guarantees only.
 
-The SPEC.md `compact` CLI line would gain the operation flags, as `review` and `close` gained
-theirs. Per the owner's instruction, no ADR is drafted until these recommendations are reviewed.
+SPEC.md was amended with the adoption:
+- the `compact` CLI line lists the task-bound retirement operations;
+- a "Compaction and retirement" section summarises ADR-0003.
 
-If C2(b) is chosen instead, no ADR is needed, but COMPACT would not reduce START noise.
+`docs/PHASE-0-1.md` still describes `supersedes` and `superseded_by` as uninterpreted on non-ADR
+artifacts. That matches the implemented code and is now out of date against ADR-0003 for
+`superseded_by` on learnings and traps. The Phase 6 implementation task updates it together with
+the code.
 
 ## Proposed acceptance scenarios for the implementation task
 
@@ -258,9 +282,14 @@ If C2(b) is chosen instead, no ADR is needed, but COMPACT would not reduce START
 15. `reviews/`, `TASKS.md`, `context/*.md`, ADRs, rules, skills and Git state are untouched in
     every scenario.
 16. Windows paths and offline operation, as in earlier phases.
+17. Validation fails when a retired artifact lacks a valid retirement record, or when a successor
+    no longer contains its predecessor's `tasks`, `evidence` or (for traps) `files` entries
+    (ADR-0003 guarantees 4 and 5).
 
 ## Revision history
 
 | Revision | Date | Change |
 |---|---|---|
 | 1 | 2026-10-05 | Initial design: derived requirements, decisions C1–C6 with options and recommendations, recommended contract and acceptance scenarios, for owner review. |
+| 2 | 2026-10-05 | Owner resolved C1(b), C2(a), C3(a), C4(a), C5(b), C6(b) and approved the successor safety requirements. ADR-0003 drafted as proposed. Scenario 17 added for the standing containment invariant. |
+| 3 | 2026-10-05 | ADR-0003 adopted as written, including the standing containment invariant. SPEC.md amended. Design complete and ready for final acceptance. |
