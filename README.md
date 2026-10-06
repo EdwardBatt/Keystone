@@ -9,7 +9,7 @@ performed. The aim is for an AI agent to start each task with the right constrai
 approximate memory of earlier conversations.
 
 This is working software, not a concept: a TypeScript/Node CLI with eight implemented commands, a
-209-test automated suite, and a project history in which Keystone has been used to manage its own
+248-test automated suite, and a project history in which Keystone has been used to manage its own
 development.
 
 ## The problem
@@ -55,7 +55,7 @@ Implemented characteristics, each covered by the test suite:
 - **Deterministic, safe outputs:** sorted, locale-independent serialization; atomic replacement of
   generated state; all-or-nothing source writes with restoration on failure.
 - **Offline and model-free:** every command runs without network access or a model.
-- **Automated regression testing:** 209 tests, run offline with Node's test runner and verified on
+- **Automated regression testing:** 248 tests, run offline with Node's test runner and verified on
   Windows. They include adversarial cases such as hostile IDs, injected write failures and
   byte-for-byte preservation.
 
@@ -89,13 +89,13 @@ Implemented characteristics, each covered by the test suite:
 | 4 | Independent review evidence | Complete |
 | 5 | CLOSE and controlled learning | Complete |
 | 6 | COMPACT and knowledge retirement | Complete |
-| 7 | Benchmark harness (`keystone-bench`) | **Designed and accepted (TASK-0012, ADR-0004); not implemented** |
+| 7 | Benchmark harness (`keystone-bench`) | Complete |
 | 8 | Cross-model trial | Not started |
 
 Also planned for v0.1 and not yet implemented: `keystone context explain`. Known limitation:
 CLOSE's failure restoration is not yet verified in the way COMPACT's is (`docs/PHASE-6.md`).
-The Phase 7 harness is specified so that it measures Keystone against control conditions
-neutrally. No benchmark results exist yet.
+The Phase 7 harness measures Keystone against control conditions neutrally, as the separate
+`keystone-bench` executable (`docs/PHASE-7.md`). No benchmark results exist yet.
 
 ## How it is built: AI-first, owner-controlled
 
@@ -153,7 +153,7 @@ A short path through the strongest evidence:
    - `src/context/selection.ts`: START selection;
    - `src/graph/index.ts`: link graph and invariants;
    - `src/commands/compact.ts` and `src/compaction/edit.ts`: byte-preserving, verified writes.
-7. **Tests:** `tests/README.md`, then `tests/phase3.test.mjs` to `tests/phase6.test.mjs`.
+7. **Tests:** `tests/README.md`, then `tests/phase3.test.mjs` to `tests/phase7.test.mjs`.
 8. **History:** `TASKS.md` and `git log`. Commits generally reference the task they implement.
 
 ## Running it
@@ -203,6 +203,8 @@ node dist/cli/index.js compact --task TASK-0002 --retire LRN-0001 --reason "Cons
   record.
 - [Phase 6](docs/PHASE-6.md): compaction reporting, retirement checks, binding-removal visibility
   and the ADR-0003 validation invariants.
+- [Phase 7](docs/PHASE-7.md): the `keystone-bench` formats, isolation, neutral execution, telemetry,
+  scoring, blinded judging, provenance and the ADR-0004 exclusions.
 - `SETUP.md`: local setup. `FIRST-CODEX-TASK.md`: the historical Phase 0/1 contract.
 
 ## Licence

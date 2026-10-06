@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:keystone:bench:condition:1",
+  "title": "keystone-bench condition",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["kind", "schema_version", "id", "instructions", "setup", "tools"],
+  "properties": {
+    "kind": { "const": "keystone-bench-condition" },
+    "schema_version": { "const": 1 },
+    "id": { "$ref": "urn:keystone:bench:common:1#/$defs/id" },
+    "description": { "type": "string" },
+    "instructions": { "oneOf": [{ "$ref": "urn:keystone:bench:common:1#/$defs/file" }, { "type": "null" }] },
+    "setup": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["files", "commands"],
+      "properties": {
+        "files": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["from", "to"],
+            "properties": {
+              "from": { "$ref": "urn:keystone:bench:common:1#/$defs/file" },
+              "to": { "$ref": "urn:keystone:bench:common:1#/$defs/file" }
+            }
+          }
+        },
+        "commands": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "command"],
+            "properties": {
+              "id": { "$ref": "urn:keystone:bench:common:1#/$defs/id" },
+              "command": { "$ref": "urn:keystone:bench:common:1#/$defs/argv" }
+            }
+          }
+        }
+      }
+    },
+    "tools": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "command"],
+        "properties": {
+          "name": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$" },
+          "command": { "$ref": "urn:keystone:bench:common:1#/$defs/argv" }
+        }
+      }
+    }
+  }
+}

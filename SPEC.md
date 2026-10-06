@@ -197,7 +197,11 @@ that plan. Application-specific task content stays in its subject repository.
 Only `keystone-bench` runs may launch external programs: the declared agent commands, condition
 setup and task oracles, inside the run's workspace. A manual profile is equally supported.
 Keystone contains no model-provider code or credentials. Every run uses its own fresh local clone
-of the subject at a pinned commit (D23). The source subject is never modified.
+of the subject at a pinned commit (D23). The source subject is never modified. ADR-0004's
+clarification (2026-10-06) sets the threat boundary. Harness-controlled operations never knowingly
+write into the subject or another protected repository; they defend against deterministic
+filesystem aliases present when they act. They are not an OS-level sandbox against concurrent
+hostile mutation, and agent sessions are not sandboxed.
 
 The harness is neutral between conditions. It never requires, installs or privileges Keystone in
 a measured workspace. Conditions are peer declarative definitions. Every condition in an experiment

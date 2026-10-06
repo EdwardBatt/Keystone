@@ -1,0 +1,233 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:keystone:bench:run-record:1",
+  "title": "keystone-bench run record (durable, non-authoritative)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["kind", "schema_version", "run_id", "purpose", "status", "failure", "plan", "provenance", "inputs", "environment", "setup", "sessions", "checks", "telemetry", "evidence", "evidence_hash"],
+  "properties": {
+    "kind": { "const": "keystone-bench-run-record" },
+    "schema_version": { "const": 1 },
+    "run_id": { "$ref": "#/$defs/runId" },
+    "purpose": { "enum": ["experiment", "smoke"] },
+    "status": { "enum": ["completed", "failed"] },
+    "failure": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object", "additionalProperties": false, "required": ["code", "message"],
+          "properties": { "code": { "type": "string" }, "message": { "type": "string" } }
+        }
+      ]
+    },
+    "plan": { "$ref": "#/$defs/identity" },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["keystone", "harness", "subject", "task", "condition", "profile", "seed", "repetition", "order_index", "started_at", "finished_at", "platform"],
+      "properties": {
+        "keystone": {
+          "type": "object", "additionalProperties": false, "required": ["version", "commit", "dirty"],
+          "properties": {
+            "version": { "type": "string" },
+            "commit": { "oneOf": [{ "$ref": "urn:keystone:bench:common:1#/$defs/commit" }, { "type": "null" }] },
+            "dirty": { "type": ["boolean", "null"] }
+          }
+        },
+        "harness": {
+          "type": "object", "additionalProperties": false, "required": ["version"],
+          "properties": { "version": { "type": "string" } }
+        },
+        "subject": {
+          "type": "object", "additionalProperties": false, "required": ["id", "commit"],
+          "properties": {
+            "id": { "$ref": "urn:keystone:bench:common:1#/$defs/id" },
+            "commit": { "$ref": "urn:keystone:bench:common:1#/$defs/commit" }
+          }
+        },
+        "task": { "$ref": "#/$defs/identity" },
+        "condition": { "$ref": "#/$defs/identity" },
+        "profile": {
+          "type": "object", "additionalProperties": false, "required": ["id", "hash", "mode", "declared"],
+          "properties": {
+            "id": { "$ref": "urn:keystone:bench:common:1#/$defs/id" },
+            "hash": { "$ref": "urn:keystone:bench:common:1#/$defs/hash" },
+            "mode": { "enum": ["command", "manual"] },
+            "declared": {
+              "type": "object", "additionalProperties": false, "required": ["tool", "model"],
+              "properties": { "tool": { "$ref": "urn:keystone:bench:common:1#/$defs/identifier" }, "model": { "$ref": "urn:keystone:bench:common:1#/$defs/identifier" } }
+            }
+          }
+        },
+        "seed": { "type": "integer", "minimum": 0 },
+        "repetition": { "type": "integer", "minimum": 1 },
+        "order_index": { "type": "integer", "minimum": 0 },
+        "started_at": { "type": "string" },
+        "finished_at": { "type": "string" },
+        "platform": { "type": "string" }
+      }
+    },
+    "inputs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["statement", "prompts", "fix_prompt", "oracles", "profile", "limits", "instrumentation", "instructions", "setup"],
+      "properties": {
+        "statement": { "$ref": "#/$defs/hash" },
+        "prompts": { "type": "object", "additionalProperties": { "$ref": "#/$defs/hash" } },
+        "fix_prompt": { "$ref": "#/$defs/nullableHash" },
+        "oracles": { "$ref": "#/$defs/hash" },
+        "profile": { "$ref": "#/$defs/hash" },
+        "limits": { "$ref": "#/$defs/hash" },
+        "instrumentation": { "$ref": "#/$defs/hash" },
+        "instructions": { "$ref": "#/$defs/nullableHash" },
+        "setup": { "$ref": "#/$defs/hash" }
+      }
+    },
+    "environment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pass", "removed_path_entries", "base_path_hash"],
+      "properties": {
+        "pass": { "type": "array", "items": { "type": "string" } },
+        "removed_path_entries": { "$ref": "#/$defs/count" },
+        "base_path_hash": { "$ref": "#/$defs/hash" }
+      }
+    },
+    "setup": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["duration_ms", "files_staged", "commands"],
+      "properties": {
+        "duration_ms": { "type": ["integer", "null"], "minimum": 0 },
+        "files_staged": { "$ref": "#/$defs/count" },
+        "commands": {
+          "type": "array",
+          "items": {
+            "type": "object", "additionalProperties": false, "required": ["id", "status", "exit_code", "duration_ms"],
+            "properties": {
+              "id": { "type": "string" },
+              "status": { "$ref": "#/$defs/processStatus" },
+              "exit_code": { "type": ["integer", "null"] },
+              "duration_ms": { "type": "integer", "minimum": 0 }
+            }
+          }
+        }
+      }
+    },
+    "sessions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "kind", "status", "exit_code", "duration_ms", "duration_source", "usage", "changes"],
+        "properties": {
+          "id": { "type": "string" },
+          "kind": { "enum": ["planned", "fix"] },
+          "status": { "$ref": "#/$defs/processStatus" },
+          "exit_code": { "type": ["integer", "null"] },
+          "duration_ms": { "type": ["integer", "null"], "minimum": 0 },
+          "duration_source": { "enum": ["deterministic", "reported"] },
+          "usage": { "oneOf": [{ "$ref": "urn:keystone:bench:common:1#/$defs/usage" }, { "type": "null" }] },
+          "changes": {
+            "oneOf": [
+              { "type": "null" },
+              {
+                "type": "object", "additionalProperties": false, "required": ["files", "insertions", "deletions"],
+                "properties": { "files": { "$ref": "#/$defs/count" }, "insertions": { "$ref": "#/$defs/count" }, "deletions": { "$ref": "#/$defs/count" } }
+              }
+            ]
+          }
+        }
+      }
+    },
+    "checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["after", "results"],
+        "properties": {
+          "after": { "type": "string" },
+          "results": {
+            "type": "array",
+            "items": {
+              "type": "object", "additionalProperties": false, "required": ["id", "role", "passed", "status", "exit_code", "duration_ms"],
+              "properties": {
+                "id": { "type": "string" },
+                "role": { "enum": ["task", "regression", "trap"] },
+                "passed": { "type": "boolean" },
+                "status": { "$ref": "#/$defs/processStatus" },
+                "exit_code": { "type": ["integer", "null"] },
+                "duration_ms": { "type": "integer", "minimum": 0 }
+              }
+            }
+          }
+        }
+      }
+    },
+    "telemetry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled", "tools", "keystone_envelope", "keystone_validation"],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "tools": {
+          "type": "array",
+          "items": {
+            "type": "object", "additionalProperties": false, "required": ["name", "resolved", "invocations", "failures", "duration_ms"],
+            "properties": {
+              "name": { "type": "string" },
+              "resolved": { "type": "boolean" },
+              "invocations": { "$ref": "#/$defs/count" },
+              "failures": { "$ref": "#/$defs/count" },
+              "duration_ms": { "$ref": "#/$defs/count" }
+            }
+          }
+        },
+        "keystone_envelope": {
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "object", "additionalProperties": false, "required": ["estimated_tokens", "omissions"],
+              "properties": { "estimated_tokens": { "$ref": "#/$defs/count" }, "omissions": { "$ref": "#/$defs/count" } }
+            }
+          ]
+        },
+        "keystone_validation": {
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "object", "additionalProperties": false, "required": ["diagnostics", "codes"],
+              "properties": { "diagnostics": { "$ref": "#/$defs/count" }, "codes": { "type": "array", "items": { "type": "string" } } }
+            }
+          ]
+        }
+      }
+    },
+    "evidence": {
+      "description": "Snapshot trees of the judged change, sealed by the evidence hash; null for a run that failed in setup.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["setup_tree", "final_tree"],
+      "properties": {
+        "setup_tree": { "oneOf": [{ "type": "string", "pattern": "^([a-f0-9]{40}|[a-f0-9]{64})$" }, { "type": "null" }] },
+        "final_tree": { "oneOf": [{ "type": "string", "pattern": "^([a-f0-9]{40}|[a-f0-9]{64})$" }, { "type": "null" }] }
+      }
+    },
+    "evidence_hash": { "$ref": "#/$defs/hash" }
+  },
+  "$defs": {
+    "runId": { "type": "string", "pattern": "^R-[a-f0-9]{12}$" },
+    "hash": { "$ref": "urn:keystone:bench:common:1#/$defs/hash" },
+    "nullableHash": { "oneOf": [{ "$ref": "urn:keystone:bench:common:1#/$defs/hash" }, { "type": "null" }] },
+    "count": { "$ref": "urn:keystone:bench:common:1#/$defs/count" },
+    "identity": {
+      "type": "object", "additionalProperties": false, "required": ["id", "hash"],
+      "properties": {
+        "id": { "$ref": "urn:keystone:bench:common:1#/$defs/id" },
+        "hash": { "$ref": "urn:keystone:bench:common:1#/$defs/hash" }
+      }
+    },
+    "processStatus": { "enum": ["ok", "failed", "timed-out", "error"] }
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "kind": "keystone-bench-task",
+  "schema_version": 1,
+  "id": "change-app",
+  "description": "Synthetic two-session task with a fix loop, a regression oracle and a seeded trap.",
+  "statement": "statement.md",
+  "sessions": [
+    { "id": "s1", "prompt": "session-1.md" },
+    { "id": "s2", "prompt": "session-2.md" }
+  ],
+  "fix": { "prompt": "fix.md", "max": 3 },
+  "oracles": [
+    { "id": "app-says-two", "role": "task", "command": ["{node}", "{task}/oracles/app-says-two.mjs"] },
+    { "id": "readme-intact", "role": "regression", "command": ["{node}", "{task}/oracles/readme-intact.mjs"] },
+    { "id": "no-debug-log", "role": "trap", "description": "The seeded mistake: leaving debug.log behind.", "command": ["{node}", "{task}/oracles/no-debug-log.mjs"] }
+  ]
+}

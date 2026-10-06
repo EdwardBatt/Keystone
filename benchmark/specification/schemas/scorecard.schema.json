@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:keystone:bench:scorecard:1",
+  "title": "keystone-bench scorecard definition",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["kind", "schema_version", "measures"],
+  "properties": {
+    "kind": { "const": "keystone-bench-scorecard" },
+    "schema_version": { "const": 1 },
+    "description": { "type": "string" },
+    "measures": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "category", "source", "scope", "unit", "description"],
+        "properties": {
+          "name": { "type": "string", "pattern": "^[a-z][a-z0-9_]*(:\\*)?$" },
+          "category": { "enum": ["quality", "continuity", "efficiency", "diagnostic"] },
+          "source": { "enum": ["deterministic", "reported", "judged"] },
+          "scope": { "enum": ["primary", "diagnostic", "primary-if-universal"] },
+          "unit": { "type": "string" },
+          "description": { "type": "string" }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:keystone:bench:plan:1",
+  "title": "keystone-bench experiment plan",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["kind", "schema_version", "id", "purpose", "subject", "tasks", "conditions", "profiles", "repetitions", "seed", "limits", "telemetry"],
+  "properties": {
+    "kind": { "const": "keystone-bench-plan" },
+    "schema_version": { "const": 1 },
+    "id": { "$ref": "urn:keystone:bench:common:1#/$defs/id" },
+    "description": { "type": "string" },
+    "purpose": { "enum": ["experiment", "smoke"] },
+    "subject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "repository", "commit"],
+      "properties": {
+        "id": { "$ref": "urn:keystone:bench:common:1#/$defs/id" },
+        "repository": { "$ref": "urn:keystone:bench:common:1#/$defs/file" },
+        "commit": { "$ref": "urn:keystone:bench:common:1#/$defs/commit" }
+      }
+    },
+    "tasks": { "$ref": "#/$defs/references" },
+    "conditions": { "$ref": "#/$defs/references" },
+    "profiles": { "$ref": "#/$defs/references" },
+    "repetitions": { "type": "integer", "minimum": 1, "maximum": 1000 },
+    "seed": { "type": "integer", "minimum": 0, "maximum": 4294967295 },
+    "limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["session_timeout_seconds", "setup_timeout_seconds", "oracle_timeout_seconds"],
+      "properties": {
+        "session_timeout_seconds": { "$ref": "urn:keystone:bench:common:1#/$defs/seconds" },
+        "setup_timeout_seconds": { "$ref": "urn:keystone:bench:common:1#/$defs/seconds" },
+        "oracle_timeout_seconds": { "$ref": "urn:keystone:bench:common:1#/$defs/seconds" }
+      }
+    },
+    "telemetry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled"],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "wrap": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$" }
+        }
+      }
+    },
+    "judging": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["procedure"],
+      "properties": {
+        "procedure": { "$ref": "urn:keystone:bench:common:1#/$defs/nonblank" },
+        "exclude": { "type": "array", "items": { "$ref": "urn:keystone:bench:common:1#/$defs/file" } }
+      }
+    },
+    "composite": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["weights"],
+      "properties": {
+        "weights": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": { "type": "number" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "references": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "urn:keystone:bench:common:1#/$defs/file" }
+    }
+  }
+}

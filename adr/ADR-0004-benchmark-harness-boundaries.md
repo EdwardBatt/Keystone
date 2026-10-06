@@ -203,6 +203,28 @@ The owner adopted this ADR as drafted, with two changes:
 - **Location.** `src/telemetry/` stays reserved and unused in Phase 7; harness instrumentation
   belongs under `src/benchmark/`.
 
+## Clarification (2026-10-06): isolation threat boundary
+During TASK-0013's independent review, the owner clarified the scope of guarantees 3 and 4 and of
+source-repository immutability. No guarantee is weakened.
+
+- Phase 7 guarantees fresh, isolated benchmark workspaces. Harness-controlled operations never
+  intentionally or knowingly write into the source repository or any other protected repository.
+- The harness defends against deterministic filesystem aliases present when it performs an
+  operation:
+  - ordinary paths;
+  - symbolic links;
+  - junctions and other reparse points;
+  - pre-existing hard-linked output destinations, where applicable.
+
+  Every harness write, removal, Git operation and process launch is checked against its actual
+  physical destination at the point of use, and output files are replaced, never written through.
+- Phase 7 does **not** claim OS-level sandbox isolation against a concurrently hostile process
+  that mutates filesystem topology between validation and use. The check-to-write race remains an
+  accepted, documented limitation.
+- Agent sessions remain explicitly non-sandboxed. What an agent itself writes is the agent's own
+  doing (guarantee 2).
+- This clarification does not permit known deterministic alias bypasses.
+
 ## Related Decisions
 - Supplements ADR-0001 through guarantee 7, as ADR-0002 did.
 - Makes D23 and D24 concrete.

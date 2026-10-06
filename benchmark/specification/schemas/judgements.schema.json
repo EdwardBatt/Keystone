@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:keystone:bench:judgements:1",
+  "title": "keystone-bench blinded judgements",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["kind", "schema_version", "plan", "attestation", "judgements"],
+  "properties": {
+    "kind": { "const": "keystone-bench-judgements" },
+    "schema_version": { "const": 1 },
+    "plan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "hash"],
+      "properties": {
+        "id": { "$ref": "urn:keystone:bench:common:1#/$defs/id" },
+        "hash": { "$ref": "urn:keystone:bench:common:1#/$defs/hash" }
+      }
+    },
+    "attestation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["judge", "procedure", "date", "statement"],
+      "properties": {
+        "judge": { "$ref": "urn:keystone:bench:common:1#/$defs/nonblank" },
+        "procedure": { "$ref": "urn:keystone:bench:common:1#/$defs/nonblank" },
+        "date": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+        "statement": { "$ref": "urn:keystone:bench:common:1#/$defs/nonblank" }
+      }
+    },
+    "judgements": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["blind_id", "verdict", "blocking", "non_blocking"],
+        "properties": {
+          "blind_id": { "type": "string", "pattern": "^J-[a-f0-9]{16}$" },
+          "verdict": { "enum": ["approve", "changes-requested", "reject"] },
+          "blocking": { "$ref": "urn:keystone:bench:common:1#/$defs/count" },
+          "non_blocking": { "$ref": "urn:keystone:bench:common:1#/$defs/count" }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "kind": "keystone-bench-agent-profile",
+  "schema_version": 1,
+  "id": "fake",
+  "description": "Deterministic fake agent; no model.",
+  "mode": "command",
+  "declared": {
+    "tool": "fake-agent",
+    "model": "fake-model"
+  },
+  "command": [
+    "{node}",
+    "{profile}/fake-agent.mjs",
+    "{prompt_file}",
+    "{usage_file}",
+    "{session}"
+  ],
+  "stdin": "none",
+  "usage": "keystone-bench-json",
+  "trusted": {
+    "tools": [
+      "fake-agent"
+    ],
+    "models": [
+      "fake-model"
+    ]
+  }
+}

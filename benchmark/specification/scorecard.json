@@ -1,0 +1,27 @@
+{
+  "kind": "keystone-bench-scorecard",
+  "schema_version": 1,
+  "description": "Balanced D24 scorecard. Every measure is labelled by source. Primary measures exist for every condition and may be compared and weighted; diagnostic measures are condition-specific and are never compared across conditions or weighted (ADR-0004 guarantees 4 and 6).",
+  "measures": [
+    { "name": "task_oracle_pass_rate", "category": "quality", "source": "deterministic", "scope": "primary", "unit": "fraction", "description": "Task oracles passing at the final check, divided by task oracles." },
+    { "name": "regression_oracle_pass_rate", "category": "quality", "source": "deterministic", "scope": "primary", "unit": "fraction", "description": "Regression oracles passing at the final check, divided by regression oracles; null when the task declares none." },
+    { "name": "failed_sessions", "category": "quality", "source": "deterministic", "scope": "primary", "unit": "count", "description": "Sessions that exited non-zero, timed out or could not start." },
+    { "name": "review_verdict", "category": "quality", "source": "judged", "scope": "primary", "unit": "verdict", "description": "Verdict of the blinded, condition-neutral review procedure." },
+    { "name": "review_blocking_findings", "category": "quality", "source": "judged", "scope": "primary", "unit": "count", "description": "Blocking findings from the blinded review procedure." },
+    { "name": "review_non_blocking_findings", "category": "quality", "source": "judged", "scope": "primary", "unit": "count", "description": "Non-blocking findings from the blinded review procedure." },
+    { "name": "trap_recurrences", "category": "continuity", "source": "deterministic", "scope": "primary", "unit": "count", "description": "Trap oracles failing at the final check: a seeded known mistake was repeated." },
+    { "name": "rework_sessions", "category": "continuity", "source": "deterministic", "scope": "primary", "unit": "count", "description": "Fix sessions run because task oracles failed after the planned sessions." },
+    { "name": "session_seconds", "category": "efficiency", "source": "deterministic", "scope": "primary", "unit": "seconds", "description": "Wall-clock time of all agent sessions, excluding condition setup and oracles." },
+    { "name": "input_tokens", "category": "efficiency", "source": "reported", "scope": "primary", "unit": "tokens", "description": "Input tokens reported by the agent tool; never verified." },
+    { "name": "output_tokens", "category": "efficiency", "source": "reported", "scope": "primary", "unit": "tokens", "description": "Output tokens reported by the agent tool; never verified." },
+    { "name": "total_tokens", "category": "efficiency", "source": "reported", "scope": "primary", "unit": "tokens", "description": "Input plus output tokens reported by the agent tool; never verified." },
+    { "name": "turns", "category": "efficiency", "source": "reported", "scope": "primary", "unit": "count", "description": "Agent turns reported by the agent tool, where it reports them." },
+    { "name": "tool_calls", "category": "efficiency", "source": "reported", "scope": "primary", "unit": "count", "description": "Agent tool calls reported by the agent tool, where it reports them." },
+    { "name": "tool_seconds:*", "category": "efficiency", "source": "deterministic", "scope": "primary-if-universal", "unit": "seconds", "description": "Wall-clock time in a wrapped declared tool. Primary only when the tool resolves in every run of the plan; otherwise a diagnostic." },
+    { "name": "tool_invocations:*", "category": "efficiency", "source": "deterministic", "scope": "primary-if-universal", "unit": "count", "description": "Invocations of a wrapped declared tool, under the same rule as tool_seconds." },
+    { "name": "setup_seconds", "category": "diagnostic", "source": "deterministic", "scope": "diagnostic", "unit": "seconds", "description": "Wall-clock time of the condition's own setup commands; recorded separately from agent execution." },
+    { "name": "keystone_envelope_tokens", "category": "diagnostic", "source": "deterministic", "scope": "diagnostic", "unit": "tokens", "description": "Estimated tokens of a generated START envelope found in the workspace after the final session." },
+    { "name": "keystone_envelope_omissions", "category": "diagnostic", "source": "deterministic", "scope": "diagnostic", "unit": "count", "description": "Omissions recorded in that START envelope." },
+    { "name": "keystone_validation_diagnostics", "category": "diagnostic", "source": "deterministic", "scope": "diagnostic", "unit": "count", "description": "Keystone structural validation diagnostics in the final workspace, computed read-only after the final session." }
+  ]
+}

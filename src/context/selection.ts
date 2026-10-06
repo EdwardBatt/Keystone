@@ -1,6 +1,7 @@
 import { compare, serialize, sortDiagnostics, type Artifact, type Diagnostic, type Link } from '../core.js';
 import { entryOrder, type Entry, type Reason, type Replacement, type Role } from './envelope.js';
 import { isReviewRecordPath } from '../review/records.js';
+import { isBenchmarkRecordPath } from './benchmark-records.js';
 
 const historical = (a: Artifact) => a.type === 'adr' && ['accepted', 'superseded'].includes(String(a.metadata.status));
 export function eligible(a: Artifact): boolean {
@@ -55,6 +56,13 @@ export function select(task: Artifact, artifacts: Artifact[], links: Link[], exp
       refused.set(id, { id, path: l.target, reason: 'review-record-ineligible' });
       diagnostics.push({ code: 'START_REVIEW_RECORD_INELIGIBLE', path: byId.get(l.source)?.path ?? l.target,
         message: `Review record ${l.target} is ineligible for START and review-context selection.` });
+      return;
+    }
+    // Benchmark results and analysis are refused the same way (ADR-0004 guarantee 7).
+    if (isBenchmarkRecordPath(l.target)) {
+      refused.set(id, { id, path: l.target, reason: 'benchmark-record-ineligible' });
+      diagnostics.push({ code: 'START_BENCHMARK_RECORD_INELIGIBLE', path: byId.get(l.source)?.path ?? l.target,
+        message: `Benchmark record ${l.target} is ineligible for START and review-context selection.` });
       return;
     }
     let entry = selected.get(id);

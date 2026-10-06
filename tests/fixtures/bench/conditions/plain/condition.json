@@ -1,0 +1,9 @@
+{
+  "kind": "keystone-bench-condition",
+  "schema_version": 1,
+  "id": "plain",
+  "description": "Fixture control condition: no files, tools or instructions.",
+  "instructions": null,
+  "setup": { "files": [], "commands": [] },
+  "tools": []
+}

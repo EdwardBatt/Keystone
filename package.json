@@ -6,11 +6,12 @@
   "description": "Repo-native context and continuity system for AI-assisted software development",
   "type": "module",
   "bin": {
-    "keystone": "./dist/cli/index.js"
+    "keystone": "./dist/cli/index.js",
+    "keystone-bench": "./dist/benchmark/cli.js"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "test": "node --test tests/cli.test.mjs tests/core.test.mjs tests/parser.test.mjs tests/phase2.test.mjs tests/phase3.test.mjs tests/phase4.test.mjs tests/phase5.test.mjs tests/phase6.test.mjs",
+    "test": "node --test tests/cli.test.mjs tests/core.test.mjs tests/parser.test.mjs tests/phase2.test.mjs tests/phase3.test.mjs tests/phase4.test.mjs tests/phase5.test.mjs tests/phase6.test.mjs tests/phase7.test.mjs tests/phase7-review.test.mjs tests/phase7-review2.test.mjs tests/phase7-review3.test.mjs",
     "pretest": "npm run build",
     "check": "tsc -p tsconfig.json --noEmit"
   },

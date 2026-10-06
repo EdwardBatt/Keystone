@@ -1,0 +1,9 @@
+{
+  "kind": "keystone-bench-condition",
+  "schema_version": 1,
+  "id": "baseline",
+  "description": "Reference control condition: the subject at its pinned commit, with no additional files, tools or instructions.",
+  "instructions": null,
+  "setup": { "files": [], "commands": [] },
+  "tools": []
+}

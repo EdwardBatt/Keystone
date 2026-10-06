@@ -1,0 +1,12 @@
+{
+  "kind": "keystone-bench-condition",
+  "schema_version": 1,
+  "id": "guided",
+  "description": "Fixture treatment condition: staged notes, a declared tool, a setup command and instructions.",
+  "instructions": "instructions.md",
+  "setup": {
+    "files": [{ "from": "seed/NOTES.md", "to": "NOTES.md" }],
+    "commands": [{ "id": "mark", "command": ["helper", "setup"] }]
+  },
+  "tools": [{ "name": "helper", "command": ["{node}", "{condition}/helper.mjs"] }]
+}

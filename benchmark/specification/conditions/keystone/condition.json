@@ -1,0 +1,16 @@
+{
+  "kind": "keystone-bench-condition",
+  "schema_version": 1,
+  "id": "keystone",
+  "description": "Reference Keystone condition: this condition's own setup puts the Keystone CLI of this checkout on the session PATH and runs keystone init. Experiments may define other conditions as peers.",
+  "instructions": "instructions.md",
+  "setup": {
+    "files": [],
+    "commands": [
+      { "id": "init", "command": ["keystone", "init"] }
+    ]
+  },
+  "tools": [
+    { "name": "keystone", "command": ["{node}", "{condition}/../../../../dist/cli/index.js"] }
+  ]
+}

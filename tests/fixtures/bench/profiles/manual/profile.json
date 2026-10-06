@@ -1,0 +1,17 @@
+{
+  "kind": "keystone-bench-agent-profile",
+  "schema_version": 1,
+  "id": "manual",
+  "description": "A person performs the sessions and records them.",
+  "mode": "manual",
+  "declared": {
+    "tool": "person",
+    "model": "none"
+  },
+  "trusted": {
+    "tools": [
+      "person"
+    ],
+    "models": []
+  }
+}

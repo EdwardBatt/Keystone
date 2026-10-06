@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:keystone:bench:agent-profile:1",
+  "title": "keystone-bench agent profile",
+  "type": "object",
+  "required": ["kind", "schema_version", "id", "mode", "declared"],
+  "properties": {
+    "kind": { "const": "keystone-bench-agent-profile" },
+    "schema_version": { "const": 1 },
+    "id": { "$ref": "urn:keystone:bench:common:1#/$defs/id" },
+    "description": { "type": "string" },
+    "mode": { "enum": ["command", "manual"] },
+    "declared": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tool", "model"],
+      "properties": {
+        "tool": { "$ref": "urn:keystone:bench:common:1#/$defs/identifier" },
+        "model": { "$ref": "urn:keystone:bench:common:1#/$defs/identifier" }
+      }
+    },
+    "command": { "$ref": "urn:keystone:bench:common:1#/$defs/argv" },
+    "stdin": { "enum": ["none", "prompt"] },
+    "usage": { "enum": ["none", "keystone-bench-json", "claude-code-json"] },
+    "trusted": { "$ref": "urn:keystone:bench:common:1#/$defs/trusted" },
+    "env": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "pass": { "type": "array", "items": { "type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*$" } }
+      }
+    }
+  },
+  "if": { "properties": { "mode": { "const": "command" } } },
+  "then": {
+    "required": ["command", "stdin", "usage"],
+    "properties": {
+      "kind": true, "schema_version": true, "id": true, "description": true, "mode": true, "declared": true,
+      "command": true, "stdin": true, "usage": true, "env": true, "trusted": true
+    },
+    "additionalProperties": false
+  },
+  "else": {
+    "properties": {
+      "kind": true, "schema_version": true, "id": true, "description": true, "mode": true, "declared": true, "trusted": true
+    },
+    "additionalProperties": false
+  }
+}

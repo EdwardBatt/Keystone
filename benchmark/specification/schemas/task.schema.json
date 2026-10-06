@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:keystone:bench:task:1",
+  "title": "keystone-bench task",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["kind", "schema_version", "id", "statement", "sessions", "oracles"],
+  "properties": {
+    "kind": { "const": "keystone-bench-task" },
+    "schema_version": { "const": 1 },
+    "id": { "$ref": "urn:keystone:bench:common:1#/$defs/id" },
+    "description": { "type": "string" },
+    "statement": { "$ref": "urn:keystone:bench:common:1#/$defs/file" },
+    "sessions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "prompt"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^(?!fix[0-9])[a-z0-9][a-z0-9_-]{0,31}$" },
+          "prompt": { "$ref": "urn:keystone:bench:common:1#/$defs/file" }
+        }
+      }
+    },
+    "fix": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["prompt", "max"],
+      "properties": {
+        "prompt": { "$ref": "urn:keystone:bench:common:1#/$defs/file" },
+        "max": { "type": "integer", "minimum": 0, "maximum": 20 }
+      }
+    },
+    "oracles": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "role", "command"],
+        "properties": {
+          "id": { "$ref": "urn:keystone:bench:common:1#/$defs/id" },
+          "role": { "enum": ["task", "regression", "trap"] },
+          "description": { "type": "string" },
+          "command": { "$ref": "urn:keystone:bench:common:1#/$defs/argv" }
+        }
+      }
+    }
+  }
+}

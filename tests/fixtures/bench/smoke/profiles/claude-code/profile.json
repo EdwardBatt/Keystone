@@ -1,0 +1,36 @@
+{
+  "kind": "keystone-bench-agent-profile",
+  "schema_version": 1,
+  "id": "claude-code-smoke",
+  "description": "Claude Code in non-interactive mode for the TASK-0013 smoke run. Integration verification only.",
+  "mode": "command",
+  "declared": {
+    "tool": "claude-code",
+    "model": "sonnet"
+  },
+  "command": [
+    "claude",
+    "-p",
+    "--output-format",
+    "json",
+    "--model",
+    "sonnet",
+    "--permission-mode",
+    "acceptEdits"
+  ],
+  "stdin": "prompt",
+  "usage": "claude-code-json",
+  "env": {
+    "pass": [
+      "CLAUDE_CODE_GIT_BASH_PATH"
+    ]
+  },
+  "trusted": {
+    "tools": [
+      "claude-code"
+    ],
+    "models": [
+      "claude-sonnet-5-5"
+    ]
+  }
+}

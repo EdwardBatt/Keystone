@@ -81,7 +81,10 @@ Existing structural codes are preserved and cause failed compilation. START adds
 `START_SEVERITY_UNKNOWN`, `START_ENVELOPE_OVERWRITE_REFUSED`, and, as the ADR-0002 supplement added
 by TASK-0007, `START_REVIEW_RECORD_INELIGIBLE`. That code applies to a validly identified
 root-level `reviews/` file reference, which is omitted (`review-record-ineligible`) without
-changing the outcome. Unknown authority on an
+changing the outcome. The ADR-0004 supplement added by TASK-0013 applies the same treatment to
+root-level `benchmark/results/` and `benchmark/analysis/` file references, compared
+case-insensitively: `START_BENCHMARK_RECORD_INELIGIBLE`, omitted as `benchmark-record-ineligible`,
+in START and review-context selection alike. Unknown authority on an
 explicit review subject is diagnostic without implying global incompleteness; unknown
 replacement authority and unavailable mandatory context are incomplete. I/O failures
 retain `IO_ERROR`. Diagnostics and replacement evidence are deduplicated and sorted.

@@ -5,6 +5,7 @@ import { parseYaml } from '../parser/frontmatter.js';
 import { validateSchema } from '../validation/schemas.js';
 import { isGeneratedPath } from './generated.js';
 import { isReviewRecordPath } from '../review/records.js';
+import { isBenchmarkRecordPath } from './benchmark-records.js';
 
 export interface Config {
   schema_version: 1;
@@ -35,6 +36,9 @@ export async function loadConfig(root: string): Promise<Config> {
     fail('CONFIG_INVALID', file, 'Generated Keystone state cannot be an artifact source.', 'sources');
   }
   if (sources.some(isReviewRecordPath)) fail('CONFIG_INVALID', file, 'Review records under reviews/ cannot be an artifact source.', 'sources');
+  if (sources.some(isBenchmarkRecordPath)) {
+    fail('CONFIG_INVALID', file, 'Benchmark records under benchmark/results/ or benchmark/analysis/ cannot be an artifact source.', 'sources');
+  }
   // Defaults are optional; an explicit list is a user's concrete discovery request.
   if (Object.hasOwn(data, 'sources')) {
     for (const source of [...sources].sort(compare)) {

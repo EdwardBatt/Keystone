@@ -83,7 +83,10 @@ is reported in sorted path order. Unknown configuration keys and unsupported
 versions are errors. Directories are visited recursively; overlapping sources are
 deduplicated. `.git`, `.context`, `node_modules`, and `dist` directories are excluded.
 Generated `context/STATE.md` is also excluded regardless of its content. Explicit generated
-sources are rejected. These exclusions do not classify the other Markdown aggregates as
+sources are rejected. The root-level `reviews/` (ADR-0002), `benchmark/results/` and
+`benchmark/analysis/` (ADR-0004, TASK-0013) directories, compared case-insensitively, are never
+walked, even under a configured parent source such as `benchmark`. A configured source equal to or
+inside any of them is `CONFIG_INVALID`. These exclusions do not classify the other Markdown aggregates as
 generated or alter their authority.
 
 Markdown front matter must begin at the first line (an optional BOM is accepted), use

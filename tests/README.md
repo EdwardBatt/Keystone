@@ -60,6 +60,50 @@ the local Git executable for temporary repository discovery fixtures.
   - multi-successor branching and every retirement-specific START history path;
   - report grouping with hostile-but-valid task and feature IDs (`constructor`, `toString`,
     `hasOwnProperty` and other inherited member names), read-only and with retirement.
+- `phase7.test.mjs`: the `keystone-bench` harness and the ADR-0004 exclusions, covering:
+  - specification validation with stable codes, and the peer reference conditions;
+  - one fresh, isolated clone per run at the pinned commit, with the subject and Keystone tree
+    unchanged, and `prepare` staging files without running setup (owner decision I2);
+  - multi-session runs as separate processes, with known-answer scoring of oracles, a seeded-trap
+    recurrence, rework, reported usage and instrumentation;
+  - truthful timeout, agent-failure and setup-failure records;
+  - manual mode equivalence with an automated run;
+  - seeded, reproducible ordering;
+  - protocol read-only behaviour under each telemetry setting, and the static process,
+    import, network and dependency boundary (I1);
+  - content-free, opt-in telemetry stored outside the workspace;
+  - neutrality: no Keystone or operator variables reach a control condition, identical inputs
+    across conditions, and diagnostics kept out of comparisons and composites;
+  - blinded judging packets and attested judgement import;
+  - balanced, byte-identical scores and reports, with composites only from declared weights;
+  - provenance, evidence hashes and tamper refusal;
+  - plan-change detection, for the plan file and referenced bundles;
+  - `benchmark/results/` and `benchmark/analysis/` exclusion from discovery, configuration,
+    START and review context;
+  - smoke plans kept out of benchmark results, and truthful write failures.
+
+  Every run uses the deterministic fake agent (`fixtures/bench/profiles/fake/fake-agent.mjs`),
+  which executes `FAKE` directives from its prompt and calls no model. The fixture subject is
+  materialized as a temporary Git repository under a path with spaces; no network is used.
+- `phase7-review.test.mjs`: regression tests for the TASK-0013 independent-review blockers B1–B8, each
+  reproducing the reported attack: operator- and agent-defined Git filter, textconv and fsmonitor
+  programs; junction aliases into the subject or Keystone tree; staged inputs adopted by a changed
+  plan; partial temporary writes and unpersisted run state (injected `node:fs` failures);
+  evidence-tree substitution; tool universality over every planned run; recorded source labels;
+  and content-bearing tool or model identifiers. `bench-helpers.mjs` holds the shared harness test
+  helpers.
+- `phase7-review2.test.mjs`: regression tests for the TASK-0013 round 2 re-review: junction
+  substitution of workspaces, harness, results `runs/`, `judgements/` and analysis directories after
+  validation (including during a session), blinded-export destinations inside the subject, and
+  durable identity limited to the profile's trusted identifiers.
+- `phase7-review3.test.mjs`: round 3, under the owner-clarified threat boundary (deterministic
+  aliases present when the harness acts): `snapshots.git` aliases before and during a session,
+  hard-linked prompt and output destinations, and trusted model lists that would exceed the durable
+  model field.
+- `fixtures/bench`: the synthetic benchmark subject, task (task, regression and trap oracles),
+  fixture conditions and agent profiles. It is never benchmark evidence.
+  `fixtures/bench/smoke` holds the clean task and Claude Code profile used once for the TASK-0013
+  real-agent smoke run; no automated test invokes a real agent.
 - `fixtures/valid`: a generic target repository covering every supported artifact type.
   Invalid cases are created as explicit mutations of these fixtures in temporary roots.
 
