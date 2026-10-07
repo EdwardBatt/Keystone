@@ -14,6 +14,10 @@ D23 and D24 remain satisfied.
 The harness is measurement infrastructure. Nothing it produces is a claim about Keystone's value,
 and TASK-0013 produced no benchmark evidence.
 
+TASK-0015 extended the harness for the Phase 8 Cross-model Trial with version 2 formats and
+commands. Those mechanisms are recorded in "Phase 8 preparation (TASK-0015)" at the end of this
+document. Everything above it describes version 1 behaviour, which is unchanged.
+
 ## Commands
 
 ```powershell
@@ -419,9 +423,10 @@ experiment's results is refused (`BENCH_SMOKE_NOT_EVIDENCE`).
 ## Protocol exclusions (ADR-0004 guarantee 7)
 
 `src/context/benchmark-records.ts` classifies the root-level `benchmark/results/` and
-`benchmark/analysis/`, case-insensitively:
+`benchmark/analysis/`, and since TASK-0015 `benchmark/plans/` (ADR-0004 clarification of
+2026-10-07), case-insensitively:
 - **Discovery** never walks into them, including under a configured parent such as `benchmark`.
-- **Configuration:** a source equal to or inside either directory is `CONFIG_INVALID`.
+- **Configuration:** a source equal to or inside any of them is `CONFIG_INVALID`.
 - **START and review-context selection** refuse a file reference to them after ordinary path
   validation. The refusal is `START_BENCHMARK_RECORD_INELIGIBLE`, with omission reason
   `benchmark-record-ineligible`, without changing the outcome.
@@ -445,7 +450,9 @@ Other `benchmark/` subdirectories are unaffected. The REVIEW subject boundary is
 | `BENCH_RESULT_INVALID`, `BENCH_RESULT_EVIDENCE_MISMATCH`, `BENCH_SMOKE_NOT_EVIDENCE` | Refused records |
 | `BENCH_JUDGING_NOT_DECLARED`, `BENCH_JUDGING_EVIDENCE_MISSING`, `BENCH_BLIND_OUTPUT_INVALID`, `BENCH_BLIND_KEY_MISSING`, `BENCH_JUDGEMENTS_INVALID`, `BENCH_JUDGEMENT_UNKNOWN`, `BENCH_JUDGEMENT_DUPLICATE` | Blinded judging |
 | `BENCH_WRITE_FAILED`, `BENCH_WRITE_UNVERIFIED`, `BENCH_TEMPORARY_FILE_REMAINS`, `BENCH_STATE_WRITE_FAILED` | Truthful write and run-state failure reporting |
-| `START_BENCHMARK_RECORD_INELIGIBLE` | START or review context refused a benchmark record reference |
+| `START_BENCHMARK_RECORD_INELIGIBLE` | START or review context refused a benchmark record or plan reference |
+
+Version 2 diagnostics are listed in "Phase 8 preparation (TASK-0015)" below.
 
 ## Known limitations
 
@@ -472,3 +479,340 @@ TASK-0013 criterion 25 passed on 2026-10-06, as integration verification only. C
 (Sonnet, `acceptEdits`) ran one `baseline` session on the clean smoke task
 `tests/fixtures/bench/smoke/`. TASK-0013's Tests section records the configuration and
 verification. The run's records stayed in its work directory and are not benchmark evidence.
+
+## Phase 8 preparation (TASK-0015)
+
+TASK-0015 implemented Phase 8 preparation items 1–10 under the accepted TASK-0014 design
+(revision 6), and the approved implementation contract
+(`docs/TASK-0015-phase-8-preparation-contract.md`, revision 2). These mechanisms are
+implementation contract (ADR-0004 guarantee 9). The one protocol change is the
+`benchmark/plans/` exclusion, which ADR-0004's 2026-10-07 clarification authorizes.
+
+**Compatibility.** Version 2 extends Phase 7 only where TASK-0015 requires it:
+- Version 1 plans and profiles keep every Phase 7 behaviour above, and still produce version 1 run
+  records.
+- A version 1 plan rejects a version 2 profile, and the reverse.
+- A run record must match its plan's version (`BENCH_RESULT_INVALID`).
+- The one additive change visible to version 1 is the `codex-jsonl` usage-parser value.
+- The version 2 commands refuse version 1 plans.
+
+**Generic harness, experiment-supplied parameters.** Margins, thresholds, measures, R bounds,
+fractions, seeds, term lists, completeness rules and the classification order all live in the
+plan directory and enter the plan hash. The harness implements only named definitions:
+- the effect types;
+- the five class predicates;
+- the completeness rules;
+- the resampling procedures.
+
+### Plans, repositories and freezing (items 4 and 5)
+
+- **Location.** Experiment plans live at `benchmark/plans/<plan-id>/`: `plan.json`, the analysis
+  specification, any inspection terms, `preregistration.md`, and `freeze.json`. A version 2 plan
+  file is always `<plan-id>/plan.json` (`BENCH_PLAN_LOCATION_INVALID`). `freeze`, `prepare`, `run`,
+  `record` and `rerun` refuse a version 2 experiment plan outside its canonical location in the
+  `--root` tree.
+- **Plan version 2** (`plan-v2.schema.json`):
+  - `repositories.subject`, and optionally `repositories.benchmark`, each with `{ id, commit }`;
+  - bundles as `{ repository: subject | benchmark | keystone, path }`, where the path is the
+    bundle directory, holding `task.json`, `condition.json` or `profile.json`;
+  - `stage` (`pilot` or `main`), `analysis`, `preregistration` and `calibrated_from`;
+  - `limits.max_infrastructure_reruns`;
+  - version 2 `judging`.
+- **Hash.** The plan hash covers:
+  - the plan bytes;
+  - every task, condition and profile bundle hash;
+  - the rubric and judge-prompt bundle hashes;
+  - the hash of **every** file in the plan directory, referenced or not, recursively. The only
+    exclusion is the generated top-level `freeze.json`, which is sealed and verified wherever it
+    is read, so a forged record is never trusted. Symbolic links are refused. Filename-keyed hash
+    tables (plan directory, bundles, attempt archives) have no prototype, so every valid filename,
+    including `__proto__`, is an ordinary key. Serialization is unchanged.
+
+  Both pinned commits are in the plan bytes.
+- **Comparative eligibility (review finding 1).** Every measure the analysis specification
+  compares must be a numeric measure that is not condition-specific: primary, guardrail,
+  calibration, recurrence and resource measures alike. The rule is the scorecard rule that already
+  governs composite weights. A diagnostic (for example `setup_seconds`) or a verdict is refused at
+  load (`BENCH_ANALYSIS_MEASURE_INVALID`), and again by `analyze` and `calibrate`. Neither command
+  ever reads a diagnostic value.
+- **Locations file** (`--repos`, `keystone-bench-locations`): maps repository IDs to machine paths,
+  relative to the file's directory. It is never hashed or recorded, and must lie outside the
+  Keystone tree (`BENCH_LOCATIONS_INVALID`). The `keystone` repository is the `--root` tree.
+- **Resolution.**
+  - `validate` always checks structure. Without the repositories it reports
+    `BENCH_REPOSITORY_UNAVAILABLE` (one per repository) and `resolved: false`, and still exits
+    `valid`.
+  - Every other command is `blocked` until the repositories resolve.
+  - When resolved, each pinned repository must contain its commit
+    (`BENCH_REPOSITORY_COMMIT_MISSING`) and have `HEAD` at it (`BENCH_REPOSITORY_NOT_AT_COMMIT`).
+  - It must also have no modified, missing or untracked file under any referenced bundle path
+    (`BENCH_REPOSITORY_DIRTY`). File hashes are compared in Node against `git ls-tree`, so no
+    repository filter runs, and CRLF-only differences are tolerated.
+- **Isolation.** The benchmark repository is only read:
+  - it joins every write boundary's forbidden set;
+  - the work directory and subject must not contain it, or lie inside it (`BENCH_WORK_INVALID`);
+  - workspaces are cloned from the subject only.
+- **Records.** Version 2 run records (`run-record-v2.schema.json`) replace `provenance.subject`
+  with `provenance.repositories: { subject, benchmark | null }`, and add `provenance.attempt`.
+- **`freeze <plan>`** (version 2 experiment plans only) requires:
+  - resolution;
+  - a canonical location;
+  - a clean Keystone checkout, with every file of the plan directory tracked and unchanged
+    (`BENCH_KEYSTONE_DIRTY`);
+  - a passing exposure verification for the current hash (`BENCH_EXPOSURE_NOT_VERIFIED`);
+  - for every main-stage plan (review finding 3), all of the following, or
+    `BENCH_CALIBRATION_MISSING`:
+    - a `calibrated_from`;
+    - a freeze record for that pilot at that hash, with stage `pilot`;
+    - the pilot's calibration export at that hash, with a determined R.
+
+  It writes `freeze.json`, a sealed record holding the plan hash, the hash of every plan-directory
+  file, both
+  repositories, the Keystone commit, the exposure-verification hash and the date, through the
+  `plans` write boundary.
+- **After freezing.** Re-freezing is `unchanged`. A changed plan is refused (`BENCH_PLAN_CHANGED`);
+  a correction needs a new plan ID. `prepare`, `run` and `record` refuse an experiment plan without
+  a matching freeze record (`BENCH_PLAN_NOT_FROZEN`).
+
+### Version provenance (item 1)
+
+- A version 2 profile (`agent-profile-v2.schema.json`) declares `declared.tool_version`, which
+  must be one of `trusted.tool_versions` (`BENCH_TRUSTED_IDENTITY_INVALID`). A `command` profile
+  also declares `version.command`, which may use only the placeholders `{node}` and `{profile}`.
+- **The probe.** Before each run's condition setup, `run` launches the version command:
+  - with the controlled base environment and the setup timeout;
+  - its first non-empty output line is persisted only if it exactly matches a trusted version.
+- **A mismatch** refuses the run before anything else runs: `BENCH_TOOL_VERSION_MISMATCH`, outcome
+  `blocked`, the run stays `prepared`, and no attempt is consumed. An untrusted string is described
+  as "untrusted", never echoed.
+- **Records** carry `provenance.profile.observed: { tool_version, tool_version_source, models }`.
+  The source is `deterministic` from the probe, or `reported` from a manual record's trusted
+  `tool_version`.
+- A session that reports a trusted model other than the declared one is flagged
+  `usage.model_mismatch: true`. `report` and `analyze` list version and model mismatches and
+  unrecognized identities. They never exclude those runs.
+
+### Codex usage parser (item 2)
+
+`codex-jsonl` reads the `codex exec --json` event stream on standard output:
+
+| Measure | Mapping |
+|---|---|
+| `input_tokens` | Σ `turn.completed.usage.input_tokens` (cached input is already included, so it is not added again) |
+| `output_tokens` | Σ `turn.completed.usage.output_tokens` |
+| `turns` | count of `turn.completed` |
+| `tool_calls` | count of `item.completed` events whose item type is `command_execution`, `mcp_tool_call`, `web_search` or `file_change` |
+| model | not reported by the stream; the declared model stands |
+| tool | the parser constant `codex` |
+
+- Unparseable lines are skipped.
+- A stream with no `turn.completed` gives `null` usage, never zero. A turn missing token counts
+  makes the token sums `null`. The `BENCH_USAGE_UNREPORTED` notice is raised whenever input tokens,
+  output tokens or turns are unknown, not only when usage is wholly absent (review finding 9).
+- **The mapping is confirmed.** The offline fixture
+  (`tests/fixtures/bench/usage/codex-jsonl.synthetic.jsonl`) is synthetic. TASK-0015 criterion 33
+  confirmed the mapping against the real Codex CLI 0.160.0: cached input and reasoning counts are
+  not double-counted, and the model stays null.
+
+### Preserved attempts and reruns (item 7)
+
+`rerun <run-id> --plan <plan> --classification <file>` applies to version 2 plans only
+(`BENCH_RERUN_UNSUPPORTED` otherwise).
+
+- **Input.** A `keystone-bench-attempt-classification` file:
+  - the run ID and its current attempt number;
+  - the class, which must be `infrastructure`;
+  - the cause;
+  - evidence paths inside the run directory;
+  - `classified_by: owner` and a date.
+- **Refusals.** `rerun` is refused:
+  - once any score or analysis exists for the plan (`BENCH_RERUN_AFTER_SCORING`);
+  - beyond `limits.max_infrastructure_reruns`, which defaults to 0 (`BENCH_RERUN_EXHAUSTED`);
+  - for a run that never started (`BENCH_RERUN_NOT_STARTED`).
+- **The move.**
+  1. The whole run directory moves to `<work>/attempts/<run-id>/<attempt-n>/`.
+  2. An installed record is copied there as `record.json`. It is removed from `benchmark/results/`
+     only after its exact bytes are verified at that destination. An existing destination is
+     trusted only if it is a regular file with exactly those bytes. Any other entry or content fails
+     with `BENCH_ATTEMPT_ARCHIVE_CONFLICT`: the original stays in place, nothing is logged, and the
+     history stays incomplete. When recovering a transition whose original was already removed, the
+     archived copy must be an intact sealed record of this run, plan and attempt. `record_archived`
+     is true only once preservation is established.
+  3. The classification file is kept beside it.
+
+  Nothing is deleted.
+- **The log.** `benchmark/results/<plan-id>/attempts/<run-id>.json` is a content-free, sealed log.
+  For each attempt it holds the attempt number, the timestamps, the classification without free
+  text, the evidence-file hashes and the archive content hash.
+- **The rerun.** The same planned run is re-prepared as attempt n+1, and only the current attempt
+  supplies evidence. For version 2 plans, `BENCH_RUN_INTERRUPTED` points to `rerun`; version 1 keeps
+  the manual removal procedure.
+- **Durable history (review finding 6).** The archived attempts 1…k and the log entries must agree.
+  - A fresh `prepare` uses attempt k+1, and refuses with `BENCH_ATTEMPT_HISTORY_INCOMPLETE` when
+    they disagree. It therefore never reuses an attempt number or ignores the archive.
+  - An interrupted `rerun` (the run directory archived, the log not yet written) is completed by
+    running the same command again: the transition resumes from the archive. A failure after the
+    log is written leaves a consistent history, which `prepare` continues.
+- **Terminal infrastructure failures (review finding 7).**
+  `classify <run-id> --plan <plan> --classification <file>` records an owner-classified
+  infrastructure failure whose reruns are exhausted as a terminal log entry. The attempt stays in
+  place, and nothing is archived.
+  - It is refused while a rerun is still allowed (`BENCH_RERUN_AVAILABLE`), and once any score or
+    analysis exists.
+  - A terminal run is never prepared or rerun again (`BENCH_ATTEMPT_TERMINAL`).
+  - `analyze` treats it as missing (`matrix.infrastructure_missing`), never as an outcome.
+  - `calibrate` excludes it from the dataset and counts it as an infrastructure failure.
+
+### Judging version 2 (items 3 and 8; C2, C5)
+
+- **Declarations.** Version 2 `judging` declares:
+  - `judges`: `vendor` or `audit` role, `model` (with model and version) or `owner` kind;
+  - an optional `audit` sample: judge, fraction, seed, stratified by task;
+  - pinned `rubric` and `prompt` bundles (the rubric from a pinned repository);
+  - optional `inspection`: plan-directory term files and a replacement.
+- **Export.** `score --blind` scans every statement and patch, before writing any packet file,
+  with:
+  - the default terms (`benchmark/specification/inspection/keystone-terms.json`, generic Keystone
+    identifiers only);
+  - the plan's terms.
+
+  Every match is replaced by the single replacement, under the same rule for every run. The
+  inspection log, which holds excerpts, stays at `<work>/judging/inspection/`. `packet.json`
+  (schema version 2) records:
+  - the terms hash, the replacement and the log hash;
+  - the hit counts per term;
+  - the hash of `audit.json`.
+- **Audit sample.** Per task stratum, the blinded IDs in ascending SHA-256(`seed:blind ID`) order,
+  ⌈fraction × stratum size⌉ of them. It is computed from blinded IDs only.
+- **Release gate (C5).** `release <plan> --attestation <file>` takes a
+  `keystone-bench-packet-release` file: packet hash, inspection-log hash, `reviewed_by: owner`, date
+  and statement.
+  - **Binding (review finding 5).** It reads the exported packet text and audit text from the work
+    directory, and trusts neither until checked (`BENCH_RELEASE_INVALID`):
+    - the packet text must hash to the attested packet hash;
+    - the inspection-log hash must equal the one the packet records;
+    - the audit text must hash to the one the packet records, and must equal the audit sample
+      recomputed from the packet's items under the plan's declared rule.
+  - It writes a sealed, content-free release record to `benchmark/results/<plan-id>/judging/`,
+    holding the released items (blinded ID and task) and the audit sample.
+  - Judgement import takes item and audit membership only from sealed release records. It
+    recomputes the audit sample from the plan's rule, and never reads the mutable work-directory
+    manifest. It refuses any blinded ID that is in no released packet
+    (`BENCH_PACKET_NOT_RELEASED`).
+  - Inspection hit counts are stored collision-safely, so a term ID such as `constructor` is an
+    ordinary key (review finding 8).
+- **Import.** Judgements version 2 (`judgements-v2.schema.json`) attest:
+  - the judge (a declared judge ID);
+  - the rubric commit and hash, and the prompt hash, all equal to the plan's pins
+    (`BENCH_JUDGEMENT_PROVENANCE_INVALID`);
+  - an optional `condition_guess` per item.
+
+  Judgements are keyed by run and judge. A second judgement by one judge for one run is
+  `BENCH_JUDGEMENT_DUPLICATE`, and an audit-role judgement outside the sample is
+  `BENCH_JUDGEMENT_NOT_SAMPLED`.
+- **Measures (C2).** `review_blocking_findings` and `review_non_blocking_findings` are the mean
+  over vendor judges, defined only when every vendor judge has judged the run.
+  `review_verdict:<judge>` keeps each judge's categorical verdict. Verdicts are never averaged,
+  and version 2 has no run-level `review_verdict`.
+- **Statistics.** `analyze` reports per-judge counts and verdicts, guess participation and
+  accuracy, and pairwise agreement (inter-vendor, and vendor to audit). These are never outcome or
+  classification inputs.
+
+### Hidden-material exposure verification (item 10)
+
+`verify-exposure <plan>` launches nothing. It writes a sealed, content-free record to
+`benchmark/results/<plan-id>/verification/exposure-<hash prefix>.json`. A failure is `invalid`,
+with `BENCH_EXPOSURE_CHECK_FAILED` for each failing check:
+
+| Check | Automated test |
+|---|---|
+| E1 | Profile, version and condition-tool commands and `env.pass` name no benchmark-repository path or ID. No actually inherited variable value (allow-listed or passed through) contains one; values are only counted, never recorded (review finding 4). A command does not expand `{profile}` or `{condition}` into a benchmark-repository bundle (tool shims sit on the session `PATH`). |
+| E2 | No manual profile. |
+| E3 | No condition-staged file contains the full text of a task-bundle file (except `task.json` and the first session prompt), an oracle command, or a rubric or judge-prompt file. Whitespace is normalized. Any non-empty hidden text counts, with no length exemption (review finding 4), so a short coincidental match fails conservatively. |
+| E4 | The benchmark repository lies outside the work directory and the subject, and on no base `PATH` entry. |
+| E5 | The subject is not the benchmark repository. |
+| E6 | The harness invariant that only the current prompt is written before each launch holds whenever E2 passes. |
+
+The record also lists the owner attestations the harness cannot automate (marked unattested), and
+the residual risk: no filesystem-permission isolation.
+
+### Condition-blind calibration (item 6)
+
+`calibrate <pilot-plan>` needs a version 2 `stage: pilot` plan whose analysis specification
+declares `calibration`. It writes `calibration.json` and `.md` to the pilot's analysis directory.
+
+- **Dataset.** One row per recorded run:
+  - a fresh random `C-` ID, whose secret is never kept;
+  - the task and profile, and validity;
+  - the calibration measure, recurrences and trap opportunities;
+  - tokens, seconds and session count, by the plan-declared measures;
+  - the attempt count.
+
+  No condition, condition-derived hash, setup data, diagnostic, path, telemetry or failure text is
+  copied.
+- **Outputs:**
+  - discrimination flags per task (floor, ceiling, and an extreme headline recurrence rate);
+  - the infrastructure-failure rate (archived attempts ÷ all attempts) against the threshold;
+  - per headline cell, the pooled σ with no condition split, and R_cell = ⌈2σ² ÷ SE²⌉ (the
+    minimum when σ = 0);
+  - for each unpiloted target task, the largest observed σ of the same profile, with its source;
+  - R = clamp(max R_cell), and LOWER PRECISION when max R_cell exceeds the maximum;
+  - resource projections for every R in the declared range, including the rerun allowance.
+- **Pilot gating.** `score`, `report` and `analyze` refuse a pilot plan
+  (`BENCH_PILOT_CONDITION_BLIND`) until a main plan whose `calibrated_from` names it has been
+  frozen. Their output for the pilot is then marked `non_evidence`.
+
+### Pre-registered analysis (item 9)
+
+`analyze <plan>` needs a version 2 plan whose analysis specification declares `analysis`. It
+writes `analysis.json` and `analysis.md`, byte-identical on re-run.
+
+- **Matrix.** Every planned run; a missing record or a null value contributes no observation.
+  Nothing is imputed or reweighted.
+- **Cells and weights.** Cells are headline task × profile, with fixed equal weights. A cell is
+  defined only when each arm satisfies the declared completeness rule:
+  - `ceil-half-R`: at least ⌈R/2⌉ observations;
+  - `all-planned`: all R.
+- **Effects:**
+  - `difference`: Σ w(K̄ − B̄);
+  - `relative-reduction`: r = 1 − ΣwK̄ ÷ ΣwB̄, with the four zero-value cases. B = 0 < K is
+    `unbounded-deterioration`.
+
+  Effects are computed pooled and per profile.
+- **Guardrails (C3)** cover every task × profile cell:
+  - the arm statistic (mean or median) per cell, and the equal-weight mean of the cell statistics;
+  - an absolute guardrail compares K − B, and a relative one compares K ÷ B − 1;
+  - a guardrail is `unknown` when any cell fails the guardrail completeness rule, or B = 0 for a
+    relative guardrail. A known value is never computed from an insufficient subset.
+- **Classification.** The five predicates are evaluated in the declared order, pooled and per
+  profile; per-profile classification has no tool contradiction. The triggers are reported.
+- **Statistics.** A permutation test within headline cells, and a stratified percentile bootstrap
+  by task × profile × condition. Both are driven by SHA-256 of the declared seed, and the share of
+  unbounded resamples is reported. They never override the classification.
+
+### Version 2 diagnostics
+
+| Code | Condition |
+|---|---|
+| `BENCH_PLAN_LOCATION_INVALID`, `BENCH_PLAN_NOT_FROZEN`, `BENCH_FREEZE_UNSUPPORTED`, `BENCH_KEYSTONE_DIRTY`, `BENCH_CALIBRATION_MISSING` | Plan location and freezing |
+| `BENCH_LOCATIONS_INVALID`, `BENCH_REPOSITORY_UNAVAILABLE`, `BENCH_REPOSITORY_COMMIT_MISSING`, `BENCH_REPOSITORY_NOT_AT_COMMIT`, `BENCH_REPOSITORY_DIRTY` | Repository resolution and pins |
+| `BENCH_TOOL_VERSION_MISMATCH`, `BENCH_USAGE_UNREPORTED` | Version probe; unreported Codex usage (a notice) |
+| `BENCH_RERUN_UNSUPPORTED`, `BENCH_RERUN_NOT_STARTED`, `BENCH_RERUN_EXHAUSTED`, `BENCH_RERUN_AVAILABLE`, `BENCH_RERUN_AFTER_SCORING`, `BENCH_ATTEMPT_CLASSIFICATION_INVALID`, `BENCH_ATTEMPT_ARCHIVE_FAILED`, `BENCH_ATTEMPT_HISTORY_INCOMPLETE`, `BENCH_ATTEMPT_TERMINAL`, `BENCH_ATTEMPT_ARCHIVE_CONFLICT` | Preserved attempts and terminal classification |
+| `BENCH_ANALYSIS_MEASURE_INVALID` | A compared measure is not comparatively eligible |
+| `BENCH_JUDGEMENT_PROVENANCE_INVALID`, `BENCH_JUDGEMENT_NOT_SAMPLED`, `BENCH_PACKET_NOT_RELEASED`, `BENCH_RELEASE_INVALID` | Version 2 judging and the release gate |
+| `BENCH_EXPOSURE_UNSUPPORTED`, `BENCH_EXPOSURE_CHECK_FAILED`, `BENCH_EXPOSURE_NOT_VERIFIED` | Exposure verification |
+| `BENCH_CALIBRATION_UNSUPPORTED`, `BENCH_CALIBRATION_INCOMPLETE`, `BENCH_PILOT_CONDITION_BLIND` | Calibration and pilot gating |
+| `BENCH_ANALYSIS_UNSUPPORTED`, `BENCH_CLASSIFICATION_UNMATCHED` | Analysis |
+
+New outcomes `verified`, `frozen`, `released`, `calibrated`, `analyzed` and `classified` exit 0.
+
+### Version 2 limitations
+
+- **Plan hashes and line endings.** Bundle hashes use working-file bytes. A checkout whose line
+  endings differ (for example `core.autocrlf` on Windows) changes them. Run a frozen plan on a
+  checkout with the line-ending configuration used at freezing, or mark the bundles `-text` in the
+  benchmark repository.
+- **Release is a recorded manual gate.** The harness enforces that a release was recorded before
+  import. It cannot observe the owner's review itself.
+- **Exposure checks are textual.** E3 detects copies of whole hidden texts of any length, not paraphrases or
+  fragments shorter than 24 characters. The owner attestations cover what automation cannot.

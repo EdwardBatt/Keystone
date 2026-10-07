@@ -33,6 +33,30 @@
         "models": { "type": "array", "uniqueItems": true, "items": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/@+-]{0,255}$" } }
       }
     },
+    "usage2": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "input_tokens": { "$ref": "#/$defs/nullableCount" },
+        "output_tokens": { "$ref": "#/$defs/nullableCount" },
+        "turns": { "$ref": "#/$defs/nullableCount" },
+        "tool_calls": { "$ref": "#/$defs/nullableCount" },
+        "tool": { "$ref": "#/$defs/nullableIdentifier" },
+        "model": { "$ref": "#/$defs/nullableIdentifier" },
+        "unrecognized_identity": { "const": true },
+        "model_mismatch": { "const": true }
+      }
+    },
+    "toolVersion": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9 ._:/@+()-]{0,255}$" },
+    "bundleRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repository", "path"],
+      "properties": {
+        "repository": { "enum": ["subject", "benchmark", "keystone"] },
+        "path": { "$ref": "#/$defs/file" }
+      }
+    },
     "nullableCount": { "type": ["integer", "null"], "minimum": 0 },
     "nullableNumber": { "type": ["number", "null"] }
   }

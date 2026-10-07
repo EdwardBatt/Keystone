@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:keystone:bench:locations:1",
+  "title": "keystone-bench repository locations (machine-local; never hashed or recorded)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["kind", "schema_version", "repositories"],
+  "properties": {
+    "kind": { "const": "keystone-bench-locations" },
+    "schema_version": { "const": 1 },
+    "repositories": {
+      "type": "object",
+      "propertyNames": { "$ref": "urn:keystone:bench:common:1#/$defs/id" },
+      "additionalProperties": { "$ref": "urn:keystone:bench:common:1#/$defs/file" }
+    }
+  }
+}

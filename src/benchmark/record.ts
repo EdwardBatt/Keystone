@@ -8,8 +8,8 @@ import { loadManifest, prepared } from './run.js';
 /** `keystone-bench record <run-id> --plan <plan> --input <file>`: captures a manual run's sessions.
  * It launches nothing; the next `run` performs the final oracle check and installs the record.
  */
-export async function record(runIdArg: string, planFile: string, root: string, work: string | undefined, inputFile: string): Promise<Result> {
-  const opened = await open('record', planFile, root, work);
+export async function record(runIdArg: string, planFile: string, root: string, work: string | undefined, inputFile: string, repos?: string): Promise<Result> {
+  const opened = await open('record', planFile, root, work, { repos, gates: ['canonical', 'frozen'] });
   if (!opened.context) return opened.result!;
   const context = opened.context;
   const identity = { id: context.plan.spec.id, hash: context.plan.hash };
@@ -42,6 +42,10 @@ export async function record(runIdArg: string, planFile: string, root: string, w
     const untrusted = tool != null && !(trusted.tools ?? []).includes(tool as string) ||
       model != null && String(model).split(',').some(m => !(trusted.models ?? []).includes(m));
     if (untrusted) return blocked([{ code: 'BENCH_MANUAL_RECORD_INVALID', path: label, field: `/sessions/${i}/usage`, message: 'Tool and model may only name identities the profile declares as trusted.' }]);
+  }
+  const toolVersion = (data as { tool_version?: string }).tool_version;
+  if (toolVersion !== undefined && !(trusted.tool_versions ?? []).includes(toolVersion)) {
+    return blocked([{ code: 'BENCH_MANUAL_RECORD_INVALID', path: label, field: '/tool_version', message: 'The tool version may only name a version the profile declares as trusted.' }]);
   }
   const failure = await writeVerified(p.paths.state, serialize({ ...p.state, status: 'recorded', manual: data }), context.where.boundaries.work);
   if (failure) return { command: 'record', outcome: 'failed', plan: identity, diagnostics: failure.diagnostics, run_id: runIdArg };

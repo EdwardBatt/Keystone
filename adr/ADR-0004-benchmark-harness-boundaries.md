@@ -6,7 +6,7 @@ title: Benchmark harness boundaries
 status: accepted
 created: 2026-10-05
 features: []
-tasks: [TASK-0012, TASK-0014]
+tasks: [TASK-0012, TASK-0014, TASK-0015]
 supersedes: []
 superseded_by: []
 tags: [benchmark, harness, telemetry, neutrality, start, authority]
@@ -252,6 +252,20 @@ unchanged.
 - **Terminology.** Earlier references in this ADR to "Repo B" denote the benchmark subject and its
   evaluation material. Under `docs/REPO-SEPARATION.md` these are now the subject `trainer-app` and
   the separately pinned benchmark repository `trainer-bench`.
+
+## Clarification (2026-10-07, TASK-0015): experiment plans excluded like results
+Adopted by the owner on 2026-10-07 during TASK-0015 (Phase 8 preparation). It extends guarantee
+7's exclusion to one further directory. **No other guarantee changes**, and guarantee 7's
+treatment of results and analysis is unchanged.
+
+- The root-level `benchmark/plans/` directory holds experiment plans and their frozen
+  experiment-control material (for example pre-registration and analysis specifications). Like
+  `benchmark/results/` and `benchmark/analysis/`, it is experiment-control material, not project
+  knowledge.
+- It receives exactly guarantee 7's exclusion, compared case-insensitively: it is never discovered
+  as artifact inventory, a configured discovery source equal to or inside it is invalid, and it is
+  ineligible for START and review-context selection through every path.
+- Ordinary protocol command behaviour is otherwise unchanged.
 
 ## Related Decisions
 - Supplements ADR-0001 through guarantee 7, as ADR-0002 did.

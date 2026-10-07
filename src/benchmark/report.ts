@@ -4,6 +4,19 @@ import { definition } from './scorecard.js';
 import { writeVerified } from './store.js';
 import { open, type Result } from './prepare.js';
 import { computeScores, type RunScore, type Value } from './score.js';
+import { isPilot } from './plans.js';
+
+/** Runs whose observed identity departs from the profile's declaration (version 2 records). */
+export function identityFindings(records: Record<string, any>[]) {
+  const ids = (test: (r: Record<string, any>) => boolean) => records.filter(test).map(r => r.run_id as string).sort(compare);
+  const sessions = (r: Record<string, any>) => r.sessions as { usage: Record<string, unknown> | null }[];
+  return {
+    tool_version_mismatch: ids(r => r.provenance.profile.observed?.tool_version !== null && r.provenance.profile.observed?.tool_version !== r.provenance.profile.declared.tool_version),
+    tool_version_unobserved: ids(r => r.provenance.profile.observed?.tool_version === null),
+    model_mismatch: ids(r => sessions(r).some(s => s.usage?.model_mismatch === true)),
+    unrecognized_identity: ids(r => sessions(r).some(s => s.usage?.unrecognized_identity === true)),
+  };
+}
 
 interface Summary { sources: string[]; n: number; median: number | null; min: number | null; max: number | null; counts?: Record<string, number> }
 
@@ -70,16 +83,20 @@ function markdown(report: Record<string, any>): string {
     lines.push(`| Task | Condition | Profile | ${diagnostics.map(m => label(report.diagnostics, m)).join(' | ')} |`, `|${'---|'.repeat(3 + diagnostics.length)}`);
     for (const a of report.diagnostics) lines.push(`| ${a.task} | ${a.condition} | ${a.profile} | ${diagnostics.map(m => sourced(report.diagnostics, m, a.measures[m])).join(' | ')} |`);
   }
+  if (report.identity) {
+    lines.push('', '## Agent identity (listed, never excluded)', '');
+    for (const [key, runs] of Object.entries(report.identity as Record<string, string[]>)) lines.push(`- ${key.replace(/_/g, ' ')}: ${runs.length ? runs.join(', ') : 'none'}`);
+  }
   return lines.join('\n') + '\n';
 }
 
 /** `keystone-bench report <plan>`: a balanced scorecard per arm; byte-identical on re-run. */
-export async function report(planFile: string, root: string, work: string | undefined): Promise<Result> {
-  const opened = await open('report', planFile, root, work);
+export async function report(planFile: string, root: string, work: string | undefined, repos?: string): Promise<Result> {
+  const opened = await open('report', planFile, root, work, { repos, gates: ['pilot'] });
   if (!opened.context) return opened.result!;
   const { plan, where } = opened.context;
   const identity = { id: plan.spec.id, hash: plan.hash };
-  const { scores, refused } = await computeScores(opened.context);
+  const { scores, refused, records } = await computeScores(opened.context);
   if (refused.length) return { command: 'report', outcome: 'blocked', plan: identity, diagnostics: refused };
   const arms = group(scores, 'measures');
   const weights = plan.spec.composite?.weights;
@@ -92,6 +109,8 @@ export async function report(planFile: string, root: string, work: string | unde
   const body = {
     kind: 'keystone-bench-report', schema_version: 1, generated_by: 'keystone-bench', plan: identity, purpose: plan.spec.purpose,
     arms: withComposite, composite: weights ? { weights } : null, diagnostics: group(scores, 'diagnostics'),
+    // Version 2 (TASK-0015 item 1): identity mismatches are listed, never excluded (intention-to-treat).
+    ...(plan.version === 2 ? { identity: identityFindings(records.map(r => r.record)), ...(isPilot(plan) ? { non_evidence: true } : {}) } : {}),
   };
   for (const [name, contents] of [['report.json', serialize(body)], ['report.md', markdown(body)]] as const) {
     const failure = await writeVerified(path.join(where.analysis, name), contents, where.boundaries.analysis);

@@ -1,0 +1,45 @@
+{
+  "kind": "keystone-bench-agent-profile",
+  "schema_version": 2,
+  "id": "fake-v2",
+  "description": "Deterministic fake agent, version 2 profile (TASK-0015). Tests copy fake-agent.mjs beside it.",
+  "mode": "command",
+  "declared": {
+    "tool": "fake-agent",
+    "tool_version": "fake-agent 1.0.0",
+    "model": "fake-model"
+  },
+  "command": [
+    "{node}",
+    "{profile}/fake-agent.mjs",
+    "{prompt_file}",
+    "{usage_file}",
+    "{session}"
+  ],
+  "stdin": "none",
+  "usage": "keystone-bench-json",
+  "env": {
+    "pass": [
+      "FAKE_AGENT_VERSION"
+    ]
+  },
+  "trusted": {
+    "tools": [
+      "fake-agent"
+    ],
+    "models": [
+      "fake-model",
+      "fake-model-other"
+    ],
+    "tool_versions": [
+      "fake-agent 1.0.0",
+      "fake-agent 2.0.0"
+    ]
+  },
+  "version": {
+    "command": [
+      "{node}",
+      "{profile}/version.mjs"
+    ]
+  }
+}

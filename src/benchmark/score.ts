@@ -7,6 +7,8 @@ import { definition, type Source } from './scorecard.js';
 import { patch, snapshots } from './git.js';
 import { BoundaryError, evidenceHash, guard, guardTree, loadRecords, readJsonFile, sealRecord, writeVerified, type Boundary, type StoredRecord } from './store.js';
 import { matrix, open, runPaths, type Context, type Result } from './prepare.js';
+import { exportPacket2, importJudgements2, judgedValues, loadJudgements2 } from './judging.js';
+import { isPilot } from './plans.js';
 
 export interface Value { value: number | string | null; source: Source }
 export interface RunScore {
@@ -19,7 +21,7 @@ const seconds = (ms: number) => Math.round(ms) / 1000;
 const sum = (values: (number | null | undefined)[]) => values.length && values.every(v => typeof v === 'number') ? (values as number[]).reduce((a, b) => a + b, 0) : null;
 
 /** Measures for one run. Primary measures exist for every condition; diagnostics are condition-specific. */
-export function measure(record: Record<string, any>, judgement: Judgement | undefined, universalTools: Set<string>): RunScore {
+export function measure(record: Record<string, any>, judgement: Judgement | undefined, universalTools: Set<string>, judged2?: ReturnType<typeof judgedValues>): RunScore {
   const manual = record.provenance.profile.mode === 'manual';
   const final = record.checks.at(-1) as { results: { role: string; passed: boolean }[] } | undefined;
   const rate = (role: string) => {
@@ -51,9 +53,16 @@ export function measure(record: Record<string, any>, judgement: Judgement | unde
   put('total_tokens', input !== null && output !== null ? input + output : null);
   put('turns', usage('turns'));
   put('tool_calls', usage('tool_calls'));
-  put('review_verdict', judgement?.verdict ?? null);
-  put('review_blocking_findings', judgement?.blocking ?? null);
-  put('review_non_blocking_findings', judgement?.non_blocking ?? null);
+  if (judged2) {
+    // Version 2 (C2): counts are the vendor-judge mean; each judge's verdict stays separate.
+    for (const [judge, verdict] of Object.entries(judged2.verdicts)) put(`review_verdict:${judge}`, verdict);
+    put('review_blocking_findings', judged2.blocking);
+    put('review_non_blocking_findings', judged2.non_blocking);
+  } else {
+    put('review_verdict', judgement?.verdict ?? null);
+    put('review_blocking_findings', judgement?.blocking ?? null);
+    put('review_non_blocking_findings', judgement?.non_blocking ?? null);
+  }
   for (const tool of record.telemetry.tools as { name: string; resolved: boolean; invocations: number; duration_ms: number }[]) {
     put(`tool_seconds:${tool.name}`, tool.resolved ? seconds(tool.duration_ms) : null);
     put(`tool_invocations:${tool.name}`, tool.resolved ? tool.invocations : null);
@@ -88,17 +97,30 @@ async function loadJudgements(context: Context): Promise<{ judgements: Map<strin
 /** Deterministic scores from durable records. Any refused record blocks scoring: nothing is partially scored. */
 export async function computeScores(context: Context): Promise<{ scores: RunScore[]; refused: Diagnostic[]; records: StoredRecord[] }> {
   const { records, refused } = await loadRecords(context.plan, context.where);
+  if (context.plan.version === 2) {
+    const judged = await loadJudgements2(context);
+    const universal = universalTools(context, records);
+    const judges = context.plan.spec.judging?.judges ?? [];
+    const scores = records.map(r => measure(r.record, undefined, universal, judgedValues(judges, judged.judgements.get(r.record.run_id)))).sort((a, b) => compare(a.run_id, b.run_id));
+    return { scores, refused: [...refused, ...judged.refused], records };
+  }
   const judged = await loadJudgements(context);
-  // A tool is universal only when every planned run is recorded and resolved it, whatever the
-  // run's status: an absent or failed run cannot vouch for a condition (review B6).
+  const universal = universalTools(context, records);
+  const scores = records.map(r => measure(r.record, judged.judgements.get(r.record.run_id), universal)).sort((a, b) => compare(a.run_id, b.run_id));
+  return { scores, refused: [...refused, ...judged.refused], records };
+}
+
+/** A tool is universal only when every planned run is recorded and resolved it, whatever the run's
+ * status: an absent or failed run cannot vouch for a condition (review B6).
+ */
+function universalTools(context: Context, records: StoredRecord[]): Set<string> {
   const recorded = new Map(records.map(r => [r.record.run_id as string, r.record]));
   const planned = matrix(context.plan).map(run => recorded.get(run.run_id));
   const universal = new Set<string>();
   for (const name of context.plan.spec.telemetry.wrap ?? []) {
     if (planned.every(r => r && (r.telemetry.tools as { name: string; resolved: boolean }[]).some(t => t.name === name && t.resolved))) universal.add(name);
   }
-  const scores = records.map(r => measure(r.record, judged.judgements.get(r.record.run_id), universal)).sort((a, b) => compare(a.run_id, b.run_id));
-  return { scores, refused: [...refused, ...judged.refused], records };
+  return universal;
 }
 
 async function blindKey(context: Context): Promise<string> {
@@ -121,7 +143,7 @@ async function exportPacket(context: Context, records: StoredRecord[], output: s
   // The packet holds the subject's change, so its destination is a write boundary of its own: the
   // destination and everything below it must be real directories, physically outside the subject,
   // the Keystone tree and the work directory, checked again before every write (review round 2).
-  const boundary: Boundary = { base: path.dirname(target), forbidden: [where.subject, where.root, where.work], code: 'BENCH_BLIND_OUTPUT_INVALID', what: 'Judging packet' };
+  const boundary: Boundary = { base: path.dirname(target), forbidden: [where.subject, where.root, where.work, ...(plan.benchmark ? [plan.benchmark.path] : [])], code: 'BENCH_BLIND_OUTPUT_INVALID', what: 'Judging packet' };
   try { await guard(boundary, target); } catch (error) { if (error instanceof BoundaryError) return [error.diagnostic]; throw error; }
   try { if ((await readdir(target)).length) return [{ code: 'BENCH_BLIND_OUTPUT_INVALID', path: output, message: 'The judging packet directory must be empty or absent.' }]; } catch { /* Absent. */ }
   const put = async (file: string, data: string | Buffer) => {
@@ -129,6 +151,8 @@ async function exportPacket(context: Context, records: StoredRecord[], output: s
     if (failure) throw new BoundaryError(failure.diagnostics[0]);
   };
   const secret = await blindKey(context);
+  // Version 2: inspection and symmetric redaction before any packet file is written (item 8).
+  if (plan.version === 2) return exportPacket2(context, records, target, boundary, secret, blindId);
   const items: { blind_id: string; task: string; statement: string; patch: string }[] = [];
   for (const task of plan.tasks) await put(path.join(target, 'tasks', `${task.spec.id}.md`), await readFile(path.join(task.directory, ...task.spec.statement.split('/'))));
   for (const { record } of records.filter(r => r.record.status === 'completed')) {
@@ -162,6 +186,8 @@ async function importJudgements(context: Context, records: StoredRecord[], file:
   const keyFile = path.join(context.where.work, 'judging', `${context.plan.hash.slice(0, 16)}.key.json`);
   const key = await readJsonFile<{ secret: string }>(keyFile);
   if (!key?.secret) return [{ code: 'BENCH_BLIND_KEY_MISSING', path: keyFile, message: 'No blinding key for this plan; export a judging packet first.' }];
+  if (context.plan.version === 2) return importJudgements2(context, records, file, key.secret, blindId);
+  if ((data as { schema_version?: unknown }).schema_version !== 1) return [{ code: 'BENCH_JUDGEMENTS_INVALID', path: label, message: 'A version 1 plan imports version 1 judgements.' }];
   const byBlind = new Map(records.map(r => [blindId(key.secret, r.record.run_id), r.record.run_id]));
   const seen = new Set<string>();
   const out: Judgement[] = [];
@@ -186,11 +212,13 @@ async function importJudgements(context: Context, records: StoredRecord[], file:
 }
 
 /** `keystone-bench score <plan> [--blind <dir>] [--judged <file>]`. Launches nothing; byte-identical on re-run. */
-export async function score(planFile: string, root: string, work: string | undefined, options: { blind?: string; judged?: string } = {}): Promise<Result> {
-  const opened = await open('score', planFile, root, work);
+export async function score(planFile: string, root: string, work: string | undefined, options: { blind?: string; judged?: string; repos?: string } = {}): Promise<Result> {
+  const opened = await open('score', planFile, root, work, { repos: options.repos, gates: ['pilot'] });
   if (!opened.context) return opened.result!;
   const context = opened.context;
   const identity = { id: context.plan.spec.id, hash: context.plan.hash };
+  // A released pilot is scored as non-evidence (TASK-0015 item 6).
+  const nonEvidence = isPilot(context.plan) ? { non_evidence: true } : {};
   const first = await computeScores(context);
   if (first.refused.length) return { command: 'score', outcome: 'blocked', plan: identity, diagnostics: first.refused };
   if (options.blind) {
@@ -209,7 +237,7 @@ export async function score(planFile: string, root: string, work: string | undef
   const { scores, refused } = options.judged ? await computeScores(context) : first;
   if (refused.length) return { command: 'score', outcome: 'blocked', plan: identity, diagnostics: refused };
   const file = path.join(context.where.analysis, 'scores.json');
-  const failure = await writeVerified(file, serialize({ kind: 'keystone-bench-scores', schema_version: 1, generated_by: 'keystone-bench', plan: identity, runs: scores }), context.where.boundaries.analysis);
+  const failure = await writeVerified(file, serialize({ kind: 'keystone-bench-scores', schema_version: 1, generated_by: 'keystone-bench', plan: identity, ...nonEvidence, runs: scores }), context.where.boundaries.analysis);
   if (failure) return { command: 'score', outcome: 'failed', plan: identity, diagnostics: failure.diagnostics };
   return { command: 'score', outcome: 'scored', plan: identity, diagnostics: [], runs: scores.length, scores: file };
 }

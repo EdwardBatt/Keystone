@@ -1,0 +1,170 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:keystone:bench:agent-profile:2",
+  "title": "keystone-bench agent profile, version 2",
+  "type": "object",
+  "required": [
+    "kind",
+    "schema_version",
+    "id",
+    "mode",
+    "declared",
+    "trusted"
+  ],
+  "properties": {
+    "kind": {
+      "const": "keystone-bench-agent-profile"
+    },
+    "schema_version": {
+      "const": 2
+    },
+    "id": {
+      "$ref": "urn:keystone:bench:common:1#/$defs/id"
+    },
+    "description": {
+      "type": "string"
+    },
+    "mode": {
+      "enum": [
+        "command",
+        "manual"
+      ]
+    },
+    "declared": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tool",
+        "model",
+        "tool_version"
+      ],
+      "properties": {
+        "tool": {
+          "$ref": "urn:keystone:bench:common:1#/$defs/identifier"
+        },
+        "model": {
+          "$ref": "urn:keystone:bench:common:1#/$defs/identifier"
+        },
+        "tool_version": {
+          "$ref": "urn:keystone:bench:common:1#/$defs/toolVersion"
+        }
+      }
+    },
+    "command": {
+      "$ref": "urn:keystone:bench:common:1#/$defs/argv"
+    },
+    "stdin": {
+      "enum": [
+        "none",
+        "prompt"
+      ]
+    },
+    "usage": {
+      "enum": [
+        "none",
+        "keystone-bench-json",
+        "claude-code-json",
+        "codex-jsonl"
+      ]
+    },
+    "trusted": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tool_versions"
+      ],
+      "properties": {
+        "tools": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "urn:keystone:bench:common:1#/$defs/identifier"
+          }
+        },
+        "models": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/@+-]{0,255}$"
+          }
+        },
+        "tool_versions": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "urn:keystone:bench:common:1#/$defs/toolVersion"
+          }
+        }
+      }
+    },
+    "env": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "pass": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+          }
+        }
+      }
+    },
+    "version": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "command"
+      ],
+      "properties": {
+        "command": {
+          "$ref": "urn:keystone:bench:common:1#/$defs/argv"
+        }
+      }
+    }
+  },
+  "if": {
+    "properties": {
+      "mode": {
+        "const": "command"
+      }
+    }
+  },
+  "then": {
+    "required": [
+      "command",
+      "stdin",
+      "usage",
+      "version"
+    ],
+    "properties": {
+      "kind": true,
+      "schema_version": true,
+      "id": true,
+      "description": true,
+      "mode": true,
+      "declared": true,
+      "command": true,
+      "stdin": true,
+      "usage": true,
+      "env": true,
+      "trusted": true,
+      "version": true
+    },
+    "additionalProperties": false
+  },
+  "else": {
+    "properties": {
+      "kind": true,
+      "schema_version": true,
+      "id": true,
+      "description": true,
+      "mode": true,
+      "declared": true,
+      "trusted": true
+    },
+    "additionalProperties": false
+  }
+}

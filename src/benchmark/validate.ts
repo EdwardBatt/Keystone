@@ -20,10 +20,13 @@ async function jsonFiles(directory: string, relative = ''): Promise<string[]> {
 /** `keystone-bench validate [<plan>]`: read-only. Without a plan, checks every specification under
  * `benchmark/specification/`; with one, checks the plan and every specification it references.
  */
-export async function validate(root: string, planFile?: string): Promise<Result> {
+export async function validate(root: string, planFile?: string, repos?: string): Promise<Result> {
   if (planFile) {
-    const { plan, diagnostics } = await loadPlan(planFile, weightable);
-    return { command: 'validate', outcome: plan ? 'valid' : 'invalid', plan: plan ? { id: plan.spec.id, hash: plan.hash } : null, diagnostics: sortDiagnostics(diagnostics) };
+    const { plan, diagnostics, unresolved } = await loadPlan(planFile, weightable, { repos, root });
+    // A version 2 plan whose repositories are not on this machine is structurally valid but
+    // unresolved: its bundles, and so its hash, cannot be computed here (TASK-0015 Q2).
+    if (unresolved) return { command: 'validate', outcome: 'valid', plan: null, diagnostics: sortDiagnostics(diagnostics), resolved: false, id: unresolved.id };
+    return { command: 'validate', outcome: plan ? 'valid' : 'invalid', plan: plan ? { id: plan.spec.id, hash: plan.hash } : null, diagnostics: sortDiagnostics(diagnostics), ...(plan?.version === 2 ? { resolved: true } : {}) };
   }
   const directory = path.join(path.resolve(root), 'benchmark', 'specification');
   const files = await jsonFiles(directory);
@@ -35,8 +38,8 @@ export async function validate(root: string, planFile?: string): Promise<Result>
     if (read.length) { diagnostics.push(...read); continue; }
     const kind = (data as { kind?: unknown })?.kind;
     const name = typeof kind === 'string' ? kinds[kind] : undefined;
-    if (!name || name === 'run-record' || name === 'judgements' || name === 'manual-record') {
-      diagnostics.push({ code: 'BENCH_SPEC_KIND_UNKNOWN', path: label, message: 'Not a task, condition, agent profile, plan or scorecard specification.' });
+    if (!name || ['run-record', 'judgements', 'manual-record', 'locations', 'attempt-classification', 'packet-release', 'analysis-spec'].includes(name)) {
+      diagnostics.push({ code: 'BENCH_SPEC_KIND_UNKNOWN', path: label, message: 'Not a task, condition, agent profile, plan, scorecard or inspection-terms specification.' });
     } else if (name === 'plan') {
       diagnostics.push(...(await loadPlan(absolute, weightable)).diagnostics.map(d => ({ ...d, path: `${label}: ${d.path}` })));
     } else {

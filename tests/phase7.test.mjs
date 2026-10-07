@@ -27,8 +27,10 @@ test('validate accepts the reference specifications and rejects malformed ones w
   }
   const sources = await Promise.all((await readdir(path.join(project, 'src', 'benchmark'))).map(f => readFile(path.join(project, 'src', 'benchmark', f), 'utf8')));
   assert.ok(!sources.some(s => /['"]baseline['"]/.test(s)), 'no condition is special-cased in harness code');
-  // The only such literal is the PATH guard that keeps harness executables out of every condition alike.
-  assert.equal(sources.flatMap(s => s.match(/['"]keystone['"]/g) ?? []).length, 1);
+  // The only such literals are the PATH guard that keeps harness executables out of every condition
+  // alike, and (TASK-0015) the name of the Keystone repository in version 2 bundle references.
+  assert.equal(sources.flatMap(s => s.match(/['"]keystone['"]/g) ?? []).length, 2);
+  assert.ok(sources.some(s => /export const keystoneRepository = 'keystone' as const;/.test(s)));
 
   const a = await area(t);
   const root = path.join(a.base, 'spec root');

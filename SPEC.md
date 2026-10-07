@@ -113,10 +113,10 @@ content is retained despite the 8,000-token target, with deterministic omissions
 tiers. Exact serialization, diagnostics, packing and atomic replacement are implementation-contract
 details for Phase 3.
 
-ADR-0002 and ADR-0004 supplement this contract: the root-level `reviews/`, `benchmark/results/`
-and `benchmark/analysis/` directories, compared case-insensitively, are never discovered, are
-invalid as configured discovery sources, and are ineligible for START and review-context
-selection through every path.
+ADR-0002 and ADR-0004 supplement this contract: the root-level `reviews/`, `benchmark/results/`,
+`benchmark/analysis/` and `benchmark/plans/` directories, compared case-insensitively, are never
+discovered, are invalid as configured discovery sources, and are ineligible for START and
+review-context selection through every path.
 
 ## Review evidence
 
@@ -218,7 +218,8 @@ workspace. Protocol commands never record it and keep their read-only semantics.
 scorecard (D24), with a composite only from weights declared in an experiment plan.
 
 Results are durable, non-authoritative records under `benchmark/results/`; summaries under
-`benchmark/analysis/` are generated. Both are excluded from discovery and START as stated above. A
+`benchmark/analysis/` are generated. Experiment plans and their frozen control material live under
+`benchmark/plans/`. All three are excluded from discovery and START as stated above. A
 real-agent smoke run verifies integration only and is never benchmark evidence.
 `docs/PHASE-7.md` specifies the implementation mechanisms.
 

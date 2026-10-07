@@ -74,7 +74,40 @@ export function parseUsage(parser: ProfileSpec['usage'], stdout: Buffer, usageFi
       ...trust({ tool: null, models, parserTool: 'claude-code' }, trusted),
     };
   }
+  if (parser === 'codex-jsonl') return parseCodex(stdout, trusted);
   return null;
+}
+
+/** Event item types the Codex stream reports for tool use (provisional mapping, TASK-0015 item 2). */
+const codexToolItems = new Set(['command_execution', 'mcp_tool_call', 'web_search', 'file_change']);
+
+/** `codex exec --json` writes a JSON Lines event stream. Usage comes from `turn.completed` events;
+ * cached input is already part of `input_tokens`, so it is not added again. The stream names no
+ * model: the declared model stands. Unparseable lines are skipped; a stream with no completed turn
+ * reports no usage (`null`), never zero. The mapping is provisional until the real-CLI check.
+ */
+function parseCodex(stdout: Buffer, trusted: Trusted): Usage | null {
+  let input = 0, output = 0, turns = 0, tools = 0, incomplete = false;
+  for (const line of stdout.toString('utf8').split(/\r?\n/)) {
+    if (!line.trim()) continue;
+    let event: Record<string, any>;
+    try { event = JSON.parse(line); } catch { continue; }
+    if (!event || typeof event !== 'object') continue;
+    if (event.type === 'turn.completed') {
+      turns++;
+      const i = count(event.usage?.input_tokens);
+      const o = count(event.usage?.output_tokens);
+      if (i === null || o === null) incomplete = true; else { input += i; output += o; }
+    } else if (event.type === 'item.completed' && codexToolItems.has(event.item?.type)) tools++;
+  }
+  if (!turns) return null;
+  return { input_tokens: incomplete ? null : input, output_tokens: incomplete ? null : output, turns, tool_calls: tools, ...trust({ tool: null, models: [], parserTool: 'codex' }, trusted) };
+}
+
+/** Version 2: a session reporting a trusted model other than the declared one is flagged, never dropped (item 1). */
+function flagModel(usage: Usage | null, declared: string): Usage | null {
+  if (!usage?.model || usage.model.split(',').every(m => m === declared)) return usage;
+  return { ...usage, model_mismatch: true };
 }
 
 const allTasksPass = (check: Check | undefined) => !!check && check.results.filter(r => r.role === 'task').every(r => r.passed);
@@ -129,6 +162,30 @@ class Execution {
   private wrapped: { name: string; resolved: boolean }[] = [];
   private instructions: { text: string; hash: string } | null = null;
   private statement!: { text: string; hash: string };
+  /** Version 2: the observed tool version and its source (item 1). */
+  observed: { tool_version: string | null; tool_version_source: 'deterministic' | 'reported' | null } = { tool_version: null, tool_version_source: null };
+  /** Content-free notices raised while executing, such as unreported usage. */
+  notices: Diagnostic[] = [];
+
+  /** Version 2: launches the profile's version command before setup and compares its first output
+   * line with the declared, trusted tool version. An untrusted string is never persisted.
+   */
+  async probe(): Promise<Diagnostic | null> {
+    const { spec, directory } = this.p.profile;
+    if (this.context.plan.version !== 2 || spec.mode !== 'command' || !spec.version) return null;
+    const env = environmentFor(this.base, []);
+    await this.secure();
+    const result = await runCommand(expand(spec.version.command, { node: process.execPath, profile: directory }), {
+      cwd: this.ws, env: env.env, pathEntries: env.path, timeoutMs: this.context.plan.spec.limits.setup_timeout_seconds * 1000, captureStdout: true,
+    });
+    const line = result.stdout.toString('utf8').split(/\r?\n/).map(l => l.trim()).find(Boolean) ?? '';
+    const trusted = (spec.trusted?.tool_versions ?? []).includes(line) ? line : null;
+    if (result.status === 'ok' && trusted === spec.declared.tool_version) {
+      this.observed = { tool_version: trusted, tool_version_source: 'deterministic' };
+      return null;
+    }
+    return { code: 'BENCH_TOOL_VERSION_MISMATCH', path: this.p.run.run_id, message: `The agent tool did not report the declared version ${spec.declared.tool_version}${trusted ? ` (it reported ${trusted})` : result.status === 'ok' ? ' (it reported an untrusted version)' : ` (the version command ended ${result.status})`}; the run was not started.` };
+  }
 
   /** Refuses to continue unless the workspace and harness directory are still physically inside the work boundary. */
   async secure(): Promise<void> {
@@ -232,10 +289,15 @@ class Execution {
     const argv = expand(spec.command!, this.values({ prompt_file: promptFile, usage_file: usageFile, session: id }));
     const result = await runCommand(argv, {
       cwd: this.ws, env: this.sessionEnv.env, pathEntries: this.sessionEnv.path, timeoutMs: this.context.plan.spec.limits.session_timeout_seconds * 1000,
-      stdin: spec.stdin === 'prompt' ? composed.text : '', captureStdout: spec.usage === 'claude-code-json',
+      stdin: spec.stdin === 'prompt' ? composed.text : '', captureStdout: spec.usage === 'claude-code-json' || spec.usage === 'codex-jsonl',
     });
     await this.secure();
-    const usage = parseUsage(spec.usage, result.stdout, await readJsonFile(usageFile), spec.trusted);
+    let usage = parseUsage(spec.usage, result.stdout, await readJsonFile(usageFile), spec.trusted);
+    // The notice is raised whenever required usage is incomplete, not only when it is wholly absent.
+    if (spec.usage === 'codex-jsonl' && (!usage || usage.input_tokens == null || usage.output_tokens == null || usage.turns == null)) {
+      this.notices.push({ code: 'BENCH_USAGE_UNREPORTED', path: `${this.p.run.run_id}/${id}`, message: usage ? 'The agent reported incomplete usage for this session; the missing values are recorded as not reported (null), never zero.' : 'The agent reported no usage for this session; usage is recorded as not reported (null), never zero.' });
+    }
+    if (this.context.plan.version === 2) usage = flagModel(usage, spec.declared.model);
     const store = snapshots(this.h);
     const tree = await snapshotTree(this.ws, store);
     return { record: { id, kind, status: result.status, exit_code: result.exit_code, duration_ms: result.duration_ms, duration_source: 'deterministic', usage, changes: await changeStats(store, previous, tree) }, tree };
@@ -265,14 +327,20 @@ class Execution {
     const telemetry = plan.spec.telemetry.enabled
       ? { enabled: true, tools: await toolTelemetry(path.join(this.h, 'tool-log.jsonl'), this.wrapped), ...(fields.status === 'completed' ? await inspectWorkspace(this.ws) : { keystone_envelope: null, keystone_validation: null }) }
       : { enabled: false, tools: [], keystone_envelope: null, keystone_validation: null };
+    // Version 2 (TASK-0015 items 1, 5 and 7): both pinned repositories, the observed tool version and
+    // reported trusted models, and the attempt number. Version 1 records are unchanged.
+    const v2 = plan.version === 2;
+    const models = [...new Set(fields.sessions.flatMap(s => s.usage?.model ? s.usage.model.split(',') : []))].sort(compare);
     return {
-      kind: 'keystone-bench-run-record', schema_version: 1, run_id: run.run_id, purpose: plan.spec.purpose,
+      kind: 'keystone-bench-run-record', schema_version: plan.version, run_id: run.run_id, purpose: plan.spec.purpose,
       status: fields.status, failure: fields.failure, plan: { id: plan.spec.id, hash: plan.hash },
       provenance: {
         keystone: { version, commit: keystone.commit, dirty: keystone.dirty }, harness: { version },
-        subject: { id: plan.spec.subject.id, commit: plan.spec.subject.commit },
+        ...(v2
+          ? { repositories: { subject: { ...plan.subject }, benchmark: plan.benchmark ? { id: plan.benchmark.id, commit: plan.benchmark.commit } : null }, attempt: this.p.state.attempt ?? 1 }
+          : { subject: { id: plan.subject.id, commit: plan.subject.commit } }),
         task: { id: task.spec.id, hash: task.hash }, condition: { id: condition.spec.id, hash: condition.hash },
-        profile: { id: profile.spec.id, hash: profile.hash, mode: profile.spec.mode, declared: profile.spec.declared },
+        profile: { id: profile.spec.id, hash: profile.hash, mode: profile.spec.mode, declared: profile.spec.declared, ...(v2 ? { observed: { ...this.observed, models } } : {}) },
         seed: plan.spec.seed, repetition: run.repetition, order_index: run.order_index,
         started_at: fields.started_at, finished_at: new Date().toISOString(), platform: `${process.platform}-${process.arch}`,
       },
@@ -307,6 +375,10 @@ async function execute(context: Context, p: Prepared): Promise<{ outcome: RunOut
   await execution.environment();
   const task = p.task.spec;
   if (p.state.status === 'recorded') return finalizeManual(context, p, execution);
+  // Version 2: the tool version is observed before anything else runs; a mismatch starts nothing
+  // and consumes no attempt (TASK-0015 item 1).
+  const mismatch = await execution.probe();
+  if (mismatch) return { outcome: 'blocked', diagnostics: [mismatch] };
   const running = await saveState(p.paths, { ...p.state, status: 'running', started_at }, context.where.boundaries.work);
   if (running.length) return { outcome: 'error', diagnostics: running };
   const setup = await execution.setup();
@@ -342,7 +414,7 @@ async function execute(context: Context, p: Prepared): Promise<{ outcome: RunOut
     checks.push(await execution.check(`fix${fix}`));
   }
   const written = await install(context, p, await execution.record({ status: 'completed', failure: null, setup, sessions, checks, started_at, evidence: { setup_tree: setupTree, final_tree: tree } }));
-  return { outcome: written.length ? 'error' : 'completed', diagnostics: written };
+  return { outcome: written.length ? 'error' : 'completed', diagnostics: [...execution.notices, ...written] };
 }
 
 async function promptPath(context: Context, p: Prepared, id: string): Promise<string> {
@@ -352,7 +424,7 @@ async function promptPath(context: Context, p: Prepared, id: string): Promise<st
   return file;
 }
 
-interface ManualInput { sessions: { id: string; status: 'ok' | 'failed'; duration_seconds: number | null; usage: Usage | null }[]; fix_sessions: number }
+interface ManualInput { sessions: { id: string; status: 'ok' | 'failed'; duration_seconds: number | null; usage: Usage | null }[]; fix_sessions: number; tool_version?: string }
 
 /** Completes a manual run after `record`: the final check and record, launched only by `run` (I2). */
 async function finalizeManual(context: Context, p: Prepared, execution: Execution): Promise<{ outcome: RunOutcome; diagnostics: Diagnostic[] }> {
@@ -365,8 +437,10 @@ async function finalizeManual(context: Context, p: Prepared, execution: Executio
   const sessions: SessionRecord[] = manual.sessions.map((s, i) => ({
     id: s.id, kind: /^fix[0-9]+$/.test(s.id) ? 'fix' : 'planned', status: s.status, exit_code: null,
     duration_ms: s.duration_seconds === null ? null : Math.round(s.duration_seconds * 1000), duration_source: 'reported',
-    usage: s.usage, changes: i === manual.sessions.length - 1 ? changes : null,
+    usage: context.plan.version === 2 ? flagModel(s.usage, p.profile.spec.declared.model) : s.usage, changes: i === manual.sessions.length - 1 ? changes : null,
   }));
+  // A manual record's tool version is reported by the operator, restricted to trusted values by `record`.
+  if (context.plan.version === 2) execution.observed = { tool_version: manual.tool_version ?? null, tool_version_source: manual.tool_version ? 'reported' : null };
   const checks = [await execution.check(manual.sessions.at(-1)!.id)];
   const record = await execution.record({ status: 'completed', failure: null, setup: p.state.setup_record!, sessions, checks, started_at: p.state.started_at!, evidence: { setup_tree: setupTree, final_tree: tree } });
   const written = await install(context, p, record);
@@ -389,8 +463,8 @@ export async function prepared(context: Context, run: RunEntry): Promise<Prepare
 }
 
 /** `keystone-bench run <plan> [--run <run-id>]...`: the only operation that launches declared programs. */
-export async function run(planFile: string, root: string, work: string | undefined, requested: string[]): Promise<Result> {
-  const opened = await open('run', planFile, root, work);
+export async function run(planFile: string, root: string, work: string | undefined, requested: string[], repos?: string): Promise<Result> {
+  const opened = await open('run', planFile, root, work, { repos, gates: ['canonical', 'frozen'] });
   if (!opened.context) return opened.result!;
   const context = opened.context;
   const identity = { id: context.plan.spec.id, hash: context.plan.hash };
@@ -414,7 +488,9 @@ export async function run(planFile: string, root: string, work: string | undefin
     if (p.state.status === 'done') { runs.push({ run_id: entry.run_id, outcome: 'unchanged' }); continue; }
     if (p.state.status === 'awaiting-record') { runs.push({ run_id: entry.run_id, outcome: 'awaiting-record' }); continue; }
     if (p.state.status === 'running' || p.state.status === 'unrecorded') {
-      diagnostics.push({ code: 'BENCH_RUN_INTERRUPTED', path: entry.run_id, message: 'The run was interrupted or its record was not installed; its workspace is no longer clean. Remove the run directory and prepare again.' });
+      diagnostics.push({ code: 'BENCH_RUN_INTERRUPTED', path: entry.run_id, message: context.plan.version === 2
+        ? 'The run was interrupted or its record was not installed; its workspace is no longer clean. Archive the attempt with keystone-bench rerun after classifying it.'
+        : 'The run was interrupted or its record was not installed; its workspace is no longer clean. Remove the run directory and prepare again.' });
       runs.push({ run_id: entry.run_id, outcome: 'blocked' });
       continue;
     }

@@ -8,9 +8,15 @@ import { record } from './record.js';
 import { score } from './score.js';
 import { report } from './report.js';
 import { validate } from './validate.js';
+import { classify, rerun } from './attempts.js';
+import { verifyExposure } from './exposure.js';
+import { freeze } from './freeze.js';
+import { release } from './judging.js';
+import { calibrate } from './calibrate.js';
+import { analyze } from './analysis.js';
 
 const help = `keystone-bench v${version} — Phase 7 benchmark harness (separate from the keystone protocol CLI)
-Usage: keystone-bench <command> [options] [--root <keystone-directory>] [--work <directory>] [--json]
+Usage: keystone-bench <command> [options] [--root <keystone-directory>] [--work <directory>] [--repos <locations>] [--json]
 
   validate [<plan>]          Check specifications under benchmark/specification/, or one plan and its references (read-only)
   prepare <plan>             Fresh local clone per run at the pinned subject commit; stage declared condition files only
@@ -21,9 +27,22 @@ Usage: keystone-bench <command> [options] [--root <keystone-directory>] [--work 
                              Deterministic measures; export a blinded judging packet, or import attested judgements
   report <plan>              Balanced scorecard per arm, sources labelled; composite only from plan weights
 
+  Version 2 plans (TASK-0015):
+  rerun <run-id> --plan <plan> --classification <file>
+                             Archive an owner-classified infrastructure-failed attempt (never deleted); prepare the next attempt
+  classify <run-id> --plan <plan> --classification <file>
+                             Record an infrastructure failure whose reruns are exhausted as terminal (missing, never an outcome)
+  verify-exposure <plan>     Record the hidden-material exposure verification (launches nothing)
+  freeze <plan>              Write benchmark/plans/<plan-id>/freeze.json once the freezing preconditions hold
+  release <plan> --attestation <file>
+                             Record the owner's review of a judging packet's inspection log before release
+  calibrate <pilot-plan>     Condition-blind calibration and resource export of a pilot
+  analyze <plan>             Pre-registered analysis and classification from the plan's analysis specification
+
   --root   Keystone directory receiving benchmark/results/ and benchmark/analysis/ (default: working directory)
   --work   Harness work directory for workspaces and run state, outside the Keystone tree
            (default: <system temp>/keystone-bench/<plan-id>)
+  --repos  Machine-local locations file mapping a version 2 plan's repository IDs to paths (never hashed or recorded)
   --json   Emit one structured JSON result
 
 A smoke plan ("purpose": "smoke") keeps its records in the work directory; it is never benchmark evidence.`;
@@ -31,6 +50,8 @@ A smoke plan ("purpose": "smoke") keeps its records in the work directory; it is
 function usage(message: string): never {
   throw Object.assign(new Error(message), { usage: true });
 }
+
+const okOutcomes = ['valid', 'prepared', 'unchanged', 'completed', 'awaiting-record', 'recorded', 'scored', 'reported', 'verified', 'frozen', 'released', 'calibrated', 'analyzed', 'classified'];
 
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
@@ -43,7 +64,7 @@ async function main(): Promise<void> {
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
     if (arg === '--json') continue;
-    if (['--root', '--work', '--plan', '--input', '--blind', '--judged', '--run'].includes(arg)) {
+    if (['--root', '--work', '--plan', '--input', '--blind', '--judged', '--run', '--repos', '--classification', '--attestation'].includes(arg)) {
       const value = args[i + 1];
       if (value === undefined || value.startsWith('--')) usage(`${arg} requires a value.`);
       i++;
@@ -57,28 +78,45 @@ async function main(): Promise<void> {
   }
   const [command, target, ...extra] = positional;
   const allowed: Record<string, string[]> = {
-    validate: ['--root'], prepare: ['--root', '--work'], run: ['--root', '--work', '--run'], record: ['--root', '--work', '--plan', '--input'],
-    score: ['--root', '--work', '--blind', '--judged'], report: ['--root', '--work'],
+    validate: ['--root', '--repos'], prepare: ['--root', '--work', '--repos'], run: ['--root', '--work', '--run', '--repos'], record: ['--root', '--work', '--plan', '--input', '--repos'],
+    score: ['--root', '--work', '--blind', '--judged', '--repos'], report: ['--root', '--work', '--repos'],
+    rerun: ['--root', '--work', '--plan', '--classification', '--repos'], classify: ['--root', '--work', '--plan', '--classification', '--repos'], 'verify-exposure': ['--root', '--work', '--repos'], freeze: ['--root', '--work', '--repos'],
+    release: ['--root', '--work', '--attestation', '--repos'], calibrate: ['--root', '--work', '--repos'], analyze: ['--root', '--work', '--repos'],
   };
-  if (!command || !allowed[command]) usage('Expected validate, prepare, run, record, score or report. Use --help for usage.');
+  if (!command || !allowed[command]) usage('Expected validate, prepare, run, record, score, report, rerun, classify, verify-exposure, freeze, release, calibrate or analyze. Use --help for usage.');
   const given = [...Object.keys(flags).filter(f => flags[f] !== undefined), ...(runs.length ? ['--run'] : [])];
   const misplaced = given.filter(f => !allowed[command].includes(f));
   if (misplaced.length) usage(`${misplaced.join(', ')} not supported by ${command}.`);
-  if (extra.length || command !== 'validate' && !target) usage(`Expected ${command} ${command === 'record' ? '<run-id>' : '<plan>'}.`);
+  const byRun = command === 'record' || command === 'rerun' || command === 'classify';
+  if (extra.length || command !== 'validate' && !target) usage(`Expected ${command} ${byRun ? '<run-id>' : '<plan>'}.`);
   const root = flags['--root'] ?? process.cwd();
   const work = flags['--work'];
+  const repos = flags['--repos'];
   let result: Result;
-  if (command === 'validate') result = await validate(root, target);
-  else if (command === 'prepare') result = await prepare(target, root, work);
-  else if (command === 'run') result = await run(target, root, work, runs);
+  if (command === 'validate') result = await validate(root, target, repos);
+  else if (command === 'prepare') result = await prepare(target, root, work, repos);
+  else if (command === 'run') result = await run(target, root, work, runs, repos);
   else if (command === 'record') {
     if (!flags['--plan'] || !flags['--input']) usage('record requires --plan <plan> and --input <file>.');
-    result = await record(target, flags['--plan'], root, work, flags['--input']);
+    result = await record(target, flags['--plan'], root, work, flags['--input'], repos);
   } else if (command === 'score') {
     if (flags['--blind'] && flags['--judged']) usage('Use --blind or --judged, not both.');
-    result = await score(target, root, work, { blind: flags['--blind'], judged: flags['--judged'] });
-  } else result = await report(target, root, work);
-  const ok = ['valid', 'prepared', 'unchanged', 'completed', 'awaiting-record', 'recorded', 'scored', 'reported'].includes(result.outcome);
+    result = await score(target, root, work, { blind: flags['--blind'], judged: flags['--judged'], repos });
+  } else if (command === 'report') result = await report(target, root, work, repos);
+  else if (command === 'rerun') {
+    if (!flags['--plan'] || !flags['--classification']) usage('rerun requires --plan <plan> and --classification <file>.');
+    result = await rerun(target, flags['--plan'], root, work, flags['--classification'], repos);
+  } else if (command === 'classify') {
+    if (!flags['--plan'] || !flags['--classification']) usage('classify requires --plan <plan> and --classification <file>.');
+    result = await classify(target, flags['--plan'], root, work, flags['--classification'], repos);
+  } else if (command === 'verify-exposure') result = await verifyExposure(target, root, work, repos);
+  else if (command === 'freeze') result = await freeze(target, root, work, repos);
+  else if (command === 'release') {
+    if (!flags['--attestation']) usage('release requires --attestation <file>.');
+    result = await release(target, root, work, flags['--attestation'], repos);
+  } else if (command === 'calibrate') result = await calibrate(target, root, work, repos);
+  else result = await analyze(target, root, work, repos);
+  const ok = okOutcomes.includes(result.outcome);
   if (json) console.log(JSON.stringify({ ok, ...result }));
   else {
     console.log(`keystone-bench ${result.command}: ${result.outcome}.${result.plan ? ` Plan ${result.plan.id} (${result.plan.hash.slice(0, 12)}).` : ''}`);

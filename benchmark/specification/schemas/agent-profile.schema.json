@@ -21,7 +21,7 @@
     },
     "command": { "$ref": "urn:keystone:bench:common:1#/$defs/argv" },
     "stdin": { "enum": ["none", "prompt"] },
-    "usage": { "enum": ["none", "keystone-bench-json", "claude-code-json"] },
+    "usage": { "enum": ["none", "keystone-bench-json", "claude-code-json", "codex-jsonl"] },
     "trusted": { "$ref": "urn:keystone:bench:common:1#/$defs/trusted" },
     "env": {
       "type": "object",

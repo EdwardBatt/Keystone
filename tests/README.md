@@ -79,7 +79,7 @@ the local Git executable for temporary repository discovery fixtures.
   - provenance, evidence hashes and tamper refusal;
   - plan-change detection, for the plan file and referenced bundles;
   - `benchmark/results/` and `benchmark/analysis/` exclusion from discovery, configuration,
-    START and review context;
+    START and review context (`benchmark/plans/` is covered by `phase8-prep.test.mjs`);
   - smoke plans kept out of benchmark results, and truthful write failures.
 
   Every run uses the deterministic fake agent (`fixtures/bench/profiles/fake/fake-agent.mjs`),
@@ -100,10 +100,28 @@ the local Git executable for temporary repository discovery fixtures.
   aliases present when the harness acts): `snapshots.git` aliases before and during a session,
   hard-linked prompt and output destinations, and trusted model lists that would exceed the durable
   model field.
+- `phase8-prep.test.mjs`: TASK-0015 Phase 8 preparation, offline and synthetic:
+  - version 1 compatibility, and version 2 plans that name repositories by ID, with structural
+    validation, `--repos` resolution and pinned-commit checks;
+  - the canonical `benchmark/plans/<plan-id>/` location, `freeze`, and the frozen-plan gates;
+  - the tool-version probe, observed identity and model-mismatch flags;
+  - the synthetic, unverified `codex-jsonl` fixture;
+  - preserved attempts and `rerun`;
+  - version 2 judging: inspection and symmetric redaction, the audit sample, the release gate,
+    per-judge judgements, and verdicts never averaged;
+  - exposure verification (including E4, the benchmark repository on the inherited PATH), the
+    condition-blind `calibrate` export and pilot gating;
+  - the classification predicates and zero-value rules, and the `analyze` end-to-end procedure;
+  - the `benchmark/plans/` protocol exclusion (C1).
+
+  `bench2-helpers.mjs` builds a subject, a separately pinned benchmark repository and a Keystone
+  tree (all temporary Git repositories) for each test.
 - `fixtures/bench`: the synthetic benchmark subject, task (task, regression and trap oracles),
   fixture conditions and agent profiles. It is never benchmark evidence.
   `fixtures/bench/smoke` holds the clean task and Claude Code profile used once for the TASK-0013
-  real-agent smoke run; no automated test invokes a real agent.
+  real-agent smoke run; no automated test invokes a real agent. `fixtures/bench/v2` holds the
+  version 2 fake-agent profile (with its version probe) and a synthetic judging rubric and prompt.
+  `fixtures/bench/usage` holds the synthetic, unverified Codex event stream.
 - `fixtures/valid`: a generic target repository covering every supported artifact type.
   Invalid cases are created as explicit mutations of these fixtures in temporary roots.
 

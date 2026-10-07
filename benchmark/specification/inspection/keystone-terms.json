@@ -1,0 +1,15 @@
+{
+  "kind": "keystone-bench-inspection-terms",
+  "schema_version": 1,
+  "id": "keystone-default",
+  "description": "Generic Keystone identifiers scanned in every version 2 judging packet (TASK-0015 item 8). Experiment-specific terms, such as baseline-notes names, come from the plan, never from Keystone.",
+  "terms": [
+    { "id": "keystone", "literal": "keystone" },
+    { "id": "context-directory", "literal": ".context" },
+    { "id": "agents-file", "literal": "AGENTS.md" },
+    { "id": "task-id", "pattern": "\\bTASK-[0-9]{4}\\b" },
+    { "id": "adr-id", "pattern": "\\bADR-[0-9]{4}\\b" },
+    { "id": "learning-id", "pattern": "\\bLRN-[A-Za-z0-9][A-Za-z0-9-]*" },
+    { "id": "trap-id", "pattern": "\\bTRAP-[A-Za-z0-9][A-Za-z0-9-]*" }
+  ]
+}

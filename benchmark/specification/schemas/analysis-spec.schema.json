@@ -1,0 +1,148 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:keystone:bench:analysis-spec:1",
+  "title": "keystone-bench analysis specification: experiment-supplied calibration and analysis parameters",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["kind", "schema_version", "conditions", "task_groups"],
+  "properties": {
+    "kind": { "const": "keystone-bench-analysis-spec" },
+    "schema_version": { "const": 1 },
+    "description": { "type": "string" },
+    "conditions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reference", "treatment"],
+      "properties": {
+        "reference": { "$ref": "urn:keystone:bench:common:1#/$defs/id" },
+        "treatment": { "$ref": "urn:keystone:bench:common:1#/$defs/id" }
+      }
+    },
+    "task_groups": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["headline", "control"],
+      "properties": {
+        "headline": { "type": "array", "$ref": "#/$defs/ids", "minItems": 1 },
+        "control": { "$ref": "#/$defs/ids" }
+      }
+    },
+    "calibration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["measure", "recurrence_measure", "floor", "ceiling", "se_target", "repetitions", "infrastructure_threshold", "target_tasks", "unpiloted_sigma", "resources"],
+      "properties": {
+        "measure": { "$ref": "#/$defs/measure" },
+        "recurrence_measure": { "$ref": "#/$defs/measure" },
+        "floor": { "$ref": "#/$defs/fraction" },
+        "ceiling": { "$ref": "#/$defs/fraction" },
+        "se_target": { "type": "number", "exclusiveMinimum": 0 },
+        "repetitions": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["min", "max"],
+          "properties": { "min": { "type": "integer", "minimum": 1 }, "max": { "type": "integer", "minimum": 1 } }
+        },
+        "infrastructure_threshold": { "$ref": "#/$defs/fraction" },
+        "target_tasks": { "type": "array", "$ref": "#/$defs/ids", "minItems": 1 },
+        "unpiloted_sigma": { "const": "max-observed-same-profile" },
+        "resources": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["tokens", "seconds", "control_tasks"],
+          "properties": {
+            "tokens": { "$ref": "#/$defs/measure" },
+            "seconds": { "$ref": "#/$defs/measure" },
+            "control_tasks": { "$ref": "#/$defs/ids" }
+          }
+        }
+      }
+    },
+    "analysis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["primary", "guardrails", "completeness", "classification_order", "precision", "permutation", "bootstrap"],
+      "properties": {
+        "primary": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "measure", "effect", "margin"],
+            "properties": {
+              "id": { "$ref": "urn:keystone:bench:common:1#/$defs/id" },
+              "measure": { "$ref": "#/$defs/measure" },
+              "effect": { "enum": ["difference", "relative-reduction"] },
+              "margin": { "type": "number", "exclusiveMinimum": 0 }
+            }
+          }
+        },
+        "guardrails": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "measure", "statistic", "breach"],
+            "properties": {
+              "id": { "$ref": "urn:keystone:bench:common:1#/$defs/id" },
+              "measure": { "$ref": "#/$defs/measure" },
+              "statistic": { "enum": ["mean", "median"] },
+              "breach": {
+                "type": "object",
+                "additionalProperties": false,
+                "minProperties": 1,
+                "maxProperties": 1,
+                "properties": {
+                  "lower_by_more_than": { "type": "number", "minimum": 0 },
+                  "relative_increase_above": { "type": "number", "minimum": 0 }
+                }
+              }
+            }
+          }
+        },
+        "completeness": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["primary", "guardrails"],
+          "properties": {
+            "primary": { "$ref": "#/$defs/completeness" },
+            "guardrails": { "$ref": "#/$defs/completeness" }
+          }
+        },
+        "classification_order": {
+          "type": "array",
+          "minItems": 5,
+          "maxItems": 5,
+          "uniqueItems": true,
+          "items": { "enum": ["mixed", "unclassifiable", "positive", "negative", "neutral"] }
+        },
+        "precision": { "enum": ["normal", "lower"] },
+        "permutation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["iterations", "seed"],
+          "properties": { "iterations": { "$ref": "#/$defs/iterations" }, "seed": { "$ref": "#/$defs/seed" } }
+        },
+        "bootstrap": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["iterations", "seed", "level"],
+          "properties": {
+            "iterations": { "$ref": "#/$defs/iterations" },
+            "seed": { "$ref": "#/$defs/seed" },
+            "level": { "type": "number", "exclusiveMinimum": 0, "exclusiveMaximum": 1 }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "ids": { "type": "array", "uniqueItems": true, "items": { "$ref": "urn:keystone:bench:common:1#/$defs/id" } },
+    "measure": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
+    "fraction": { "type": "number", "minimum": 0, "maximum": 1 },
+    "completeness": { "enum": ["ceil-half-R", "all-planned"] },
+    "iterations": { "type": "integer", "minimum": 1, "maximum": 1000000 },
+    "seed": { "type": "integer", "minimum": 0, "maximum": 4294967295 }
+  }
+}

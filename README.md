@@ -90,12 +90,14 @@ Implemented characteristics, each covered by the test suite:
 | 5 | CLOSE and controlled learning | Complete |
 | 6 | COMPACT and knowledge retirement | Complete |
 | 7 | Benchmark harness (`keystone-bench`) | Complete |
-| 8 | Cross-model trial | **Design accepted (TASK-0014); preparation not started** |
+| 8 | Cross-model trial | **Design accepted (TASK-0014); harness preparation complete (TASK-0015); trial repositories, pilot and trial not started** |
 
 Also planned for v0.1 and not yet implemented: `keystone context explain`. Known limitation:
 CLOSE's failure restoration is not yet verified in the way COMPACT's is (`docs/PHASE-6.md`).
 The Phase 7 harness measures Keystone against control conditions neutrally, as the separate
-`keystone-bench` executable (`docs/PHASE-7.md`). No benchmark results exist yet.
+`keystone-bench` executable (`docs/PHASE-7.md`). TASK-0015 prepared it for the Phase 8 trial
+(version 2 plans, freezing, calibration, attempts, judging and analysis). No benchmark results
+exist yet.
 
 ## How it is built: AI-first, owner-controlled
 
@@ -204,7 +206,8 @@ node dist/cli/index.js compact --task TASK-0002 --retire LRN-0001 --reason "Cons
 - [Phase 6](docs/PHASE-6.md): compaction reporting, retirement checks, binding-removal visibility
   and the ADR-0003 validation invariants.
 - [Phase 7](docs/PHASE-7.md): the `keystone-bench` formats, isolation, neutral execution, telemetry,
-  scoring, blinded judging, provenance and the ADR-0004 exclusions.
+  scoring, blinded judging, provenance and the ADR-0004 exclusions, plus the TASK-0015 Phase 8
+  preparation mechanisms.
 - `SETUP.md`: local setup. `FIRST-CODEX-TASK.md`: the historical Phase 0/1 contract.
 
 ## Licence

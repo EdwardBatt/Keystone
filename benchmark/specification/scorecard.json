@@ -7,6 +7,7 @@
     { "name": "regression_oracle_pass_rate", "category": "quality", "source": "deterministic", "scope": "primary", "unit": "fraction", "description": "Regression oracles passing at the final check, divided by regression oracles; null when the task declares none." },
     { "name": "failed_sessions", "category": "quality", "source": "deterministic", "scope": "primary", "unit": "count", "description": "Sessions that exited non-zero, timed out or could not start." },
     { "name": "review_verdict", "category": "quality", "source": "judged", "scope": "primary", "unit": "verdict", "description": "Verdict of the blinded, condition-neutral review procedure." },
+    { "name": "review_verdict:*", "category": "quality", "source": "judged", "scope": "primary", "unit": "verdict", "description": "One declared judge's verdict under version 2 judging. Verdicts are categorical: preserved per judge, never averaged or combined." },
     { "name": "review_blocking_findings", "category": "quality", "source": "judged", "scope": "primary", "unit": "count", "description": "Blocking findings from the blinded review procedure." },
     { "name": "review_non_blocking_findings", "category": "quality", "source": "judged", "scope": "primary", "unit": "count", "description": "Non-blocking findings from the blinded review procedure." },
     { "name": "trap_recurrences", "category": "continuity", "source": "deterministic", "scope": "primary", "unit": "count", "description": "Trap oracles failing at the final check: a seeded known mistake was repeated." },

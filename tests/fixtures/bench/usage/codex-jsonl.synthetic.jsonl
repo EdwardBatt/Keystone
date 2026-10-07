@@ -1,0 +1,11 @@
+{"type":"thread.started","thread_id":"00000000-0000-0000-0000-000000000000"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item_0","type":"reasoning","text":"SYNTHETIC reasoning text that the parser must discard"}}
+{"type":"item.completed","item":{"id":"item_1","type":"command_execution","command":"cat src/app.txt","aggregated_output":"one\n","exit_code":0,"status":"completed"}}
+{"type":"item.completed","item":{"id":"item_2","type":"file_change","changes":[{"path":"src/app.txt","kind":"update"}],"status":"completed"}}
+not json: a malformed line the parser skips
+{"type":"item.completed","item":{"id":"item_3","type":"agent_message","text":"SYNTHETIC agent message"}}
+{"type":"turn.completed","usage":{"input_tokens":1200,"cached_input_tokens":800,"output_tokens":150}}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item_4","type":"mcp_tool_call","server":"synthetic","tool":"lookup","status":"completed"}}
+{"type":"turn.completed","usage":{"input_tokens":300,"cached_input_tokens":200,"output_tokens":50}}

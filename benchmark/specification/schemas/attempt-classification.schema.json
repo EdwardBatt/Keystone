@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:keystone:bench:attempt-classification:1",
+  "title": "keystone-bench owner classification of a failed attempt (infrastructure only)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["kind", "schema_version", "run_id", "attempt", "class", "cause", "evidence", "classified_by", "date"],
+  "properties": {
+    "kind": { "const": "keystone-bench-attempt-classification" },
+    "schema_version": { "const": 1 },
+    "run_id": { "type": "string", "pattern": "^R-[a-f0-9]{12}$" },
+    "attempt": { "type": "integer", "minimum": 1 },
+    "class": { "const": "infrastructure" },
+    "cause": { "enum": ["harness-error", "provider-outage", "rate-limit", "machine-fault"] },
+    "evidence": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "urn:keystone:bench:common:1#/$defs/file" } },
+    "classified_by": { "const": "owner" },
+    "date": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+    "note": { "type": "string" }
+  }
+}

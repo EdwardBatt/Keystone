@@ -1,0 +1,142 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:keystone:bench:plan:2",
+  "title": "keystone-bench experiment plan, version 2 (repositories by ID; TASK-0015)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["kind", "schema_version", "id", "purpose", "repositories", "tasks", "conditions", "profiles", "repetitions", "seed", "limits", "telemetry"],
+  "properties": {
+    "kind": { "const": "keystone-bench-plan" },
+    "schema_version": { "const": 2 },
+    "id": { "$ref": "urn:keystone:bench:common:1#/$defs/id" },
+    "description": { "type": "string" },
+    "purpose": { "enum": ["experiment", "smoke"] },
+    "stage": { "enum": ["pilot", "main"] },
+    "repositories": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["subject"],
+      "properties": {
+        "subject": { "$ref": "#/$defs/repository" },
+        "benchmark": { "$ref": "#/$defs/repository" }
+      }
+    },
+    "tasks": { "$ref": "#/$defs/bundles" },
+    "conditions": { "$ref": "#/$defs/bundles" },
+    "profiles": { "$ref": "#/$defs/bundles" },
+    "analysis": { "$ref": "urn:keystone:bench:common:1#/$defs/file" },
+    "preregistration": { "$ref": "urn:keystone:bench:common:1#/$defs/file" },
+    "calibrated_from": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "hash"],
+      "properties": {
+        "id": { "$ref": "urn:keystone:bench:common:1#/$defs/id" },
+        "hash": { "$ref": "urn:keystone:bench:common:1#/$defs/hash" }
+      }
+    },
+    "repetitions": { "type": "integer", "minimum": 1, "maximum": 1000 },
+    "seed": { "type": "integer", "minimum": 0, "maximum": 4294967295 },
+    "limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["session_timeout_seconds", "setup_timeout_seconds", "oracle_timeout_seconds"],
+      "properties": {
+        "session_timeout_seconds": { "$ref": "urn:keystone:bench:common:1#/$defs/seconds" },
+        "setup_timeout_seconds": { "$ref": "urn:keystone:bench:common:1#/$defs/seconds" },
+        "oracle_timeout_seconds": { "$ref": "urn:keystone:bench:common:1#/$defs/seconds" },
+        "max_infrastructure_reruns": { "type": "integer", "minimum": 0, "maximum": 10 }
+      }
+    },
+    "telemetry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled"],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "wrap": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$" }
+        }
+      }
+    },
+    "judging": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["procedure", "judges", "rubric", "prompt"],
+      "properties": {
+        "procedure": { "$ref": "urn:keystone:bench:common:1#/$defs/nonblank" },
+        "exclude": { "type": "array", "items": { "$ref": "urn:keystone:bench:common:1#/$defs/file" } },
+        "judges": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "role", "kind"],
+            "properties": {
+              "id": { "$ref": "urn:keystone:bench:common:1#/$defs/id" },
+              "role": { "enum": ["vendor", "audit"] },
+              "kind": { "enum": ["model", "owner"] },
+              "model": { "$ref": "urn:keystone:bench:common:1#/$defs/identifier" },
+              "version": { "$ref": "urn:keystone:bench:common:1#/$defs/toolVersion" }
+            }
+          }
+        },
+        "audit": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["judge", "fraction", "seed", "stratify"],
+          "properties": {
+            "judge": { "$ref": "urn:keystone:bench:common:1#/$defs/id" },
+            "fraction": { "type": "number", "exclusiveMinimum": 0, "maximum": 1 },
+            "seed": { "type": "integer", "minimum": 0, "maximum": 4294967295 },
+            "stratify": { "const": "task" }
+          }
+        },
+        "rubric": { "$ref": "urn:keystone:bench:common:1#/$defs/bundleRef" },
+        "prompt": { "$ref": "urn:keystone:bench:common:1#/$defs/bundleRef" },
+        "inspection": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["replacement"],
+          "properties": {
+            "terms": { "type": "array", "uniqueItems": true, "items": { "$ref": "urn:keystone:bench:common:1#/$defs/file" } },
+            "replacement": { "type": "string", "minLength": 1, "maxLength": 64 }
+          }
+        }
+      }
+    },
+    "composite": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["weights"],
+      "properties": {
+        "weights": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": { "type": "number" }
+        }
+      }
+    }
+  },
+  "if": { "properties": { "purpose": { "const": "experiment" } } },
+  "then": { "required": ["stage", "analysis", "preregistration"], "properties": { "stage": true, "analysis": true, "preregistration": true } },
+  "$defs": {
+    "repository": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "commit"],
+      "properties": {
+        "id": { "$ref": "urn:keystone:bench:common:1#/$defs/id" },
+        "commit": { "$ref": "urn:keystone:bench:common:1#/$defs/commit" }
+      }
+    },
+    "bundles": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "urn:keystone:bench:common:1#/$defs/bundleRef" }
+    }
+  }
+}

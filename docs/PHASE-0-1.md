@@ -84,7 +84,8 @@ versions are errors. Directories are visited recursively; overlapping sources ar
 deduplicated. `.git`, `.context`, `node_modules`, and `dist` directories are excluded.
 Generated `context/STATE.md` is also excluded regardless of its content. Explicit generated
 sources are rejected. The root-level `reviews/` (ADR-0002), `benchmark/results/` and
-`benchmark/analysis/` (ADR-0004, TASK-0013) directories, compared case-insensitively, are never
+`benchmark/analysis/` (ADR-0004, TASK-0013), and `benchmark/plans/` (ADR-0004 clarification of
+2026-10-07, TASK-0015) directories, compared case-insensitively, are never
 walked, even under a configured parent source such as `benchmark`. A configured source equal to or
 inside any of them is `CONFIG_INVALID`. These exclusions do not classify the other Markdown aggregates as
 generated or alter their authority.

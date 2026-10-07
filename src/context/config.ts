@@ -37,7 +37,7 @@ export async function loadConfig(root: string): Promise<Config> {
   }
   if (sources.some(isReviewRecordPath)) fail('CONFIG_INVALID', file, 'Review records under reviews/ cannot be an artifact source.', 'sources');
   if (sources.some(isBenchmarkRecordPath)) {
-    fail('CONFIG_INVALID', file, 'Benchmark records under benchmark/results/ or benchmark/analysis/ cannot be an artifact source.', 'sources');
+    fail('CONFIG_INVALID', file, 'Benchmark records and plans under benchmark/results/, benchmark/analysis/ or benchmark/plans/ cannot be an artifact source.', 'sources');
   }
   // Defaults are optional; an explicit list is a user's concrete discovery request.
   if (Object.hasOwn(data, 'sources')) {

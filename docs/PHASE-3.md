@@ -82,7 +82,8 @@ Existing structural codes are preserved and cause failed compilation. START adds
 by TASK-0007, `START_REVIEW_RECORD_INELIGIBLE`. That code applies to a validly identified
 root-level `reviews/` file reference, which is omitted (`review-record-ineligible`) without
 changing the outcome. The ADR-0004 supplement added by TASK-0013 applies the same treatment to
-root-level `benchmark/results/` and `benchmark/analysis/` file references, compared
+root-level `benchmark/results/` and `benchmark/analysis/` file references, and its 2026-10-07
+clarification (TASK-0015) to `benchmark/plans/` file references, compared
 case-insensitively: `START_BENCHMARK_RECORD_INELIGIBLE`, omitted as `benchmark-record-ineligible`,
 in START and review-context selection alike. Unknown authority on an
 explicit review subject is diagnostic without implying global incompleteness; unknown

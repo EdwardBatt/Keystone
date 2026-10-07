@@ -31,7 +31,7 @@ export function within(parent: string, child: string): boolean {
   return relative === '' || !relative.startsWith('..') && !path.isAbsolute(relative);
 }
 
-export interface Locations { root: string; work: string; results: string; analysis: string; runs: string; subject: string; boundaries: Boundaries }
+export interface Locations { root: string; work: string; results: string; analysis: string; runs: string; subject: string; plans: string; boundaries: Boundaries }
 
 /** A write boundary: every destination the harness writes, removes, or launches a process in must
  * physically lie inside `base`, be reached from `base` through no symbolic link or junction, and
@@ -39,7 +39,7 @@ export interface Locations { root: string; work: string; results: string; analys
  * of use, not once per command, so a substitution after earlier validation is refused.
  */
 export interface Boundary { base: string; forbidden: string[]; code: string; what: string }
-export interface Boundaries { work: Boundary; results: Boundary; analysis: Boundary }
+export interface Boundaries { work: Boundary; results: Boundary; analysis: Boundary; plans: Boundary }
 
 export class BoundaryError extends Error {
   constructor(public readonly diagnostic: Diagnostic) { super(diagnostic.message); this.name = 'BoundaryError'; }
@@ -81,9 +81,15 @@ export function locations(plan: LoadedPlan, root: string, work?: string): Locati
   const where = baseLocations(plan, root, work);
   const subject = plan.subjectPath;
   const smoke = plan.spec.purpose === 'smoke';
-  const work_: Boundary = { base: where.work, forbidden: [subject, where.root], code: 'BENCH_WORK_INVALID', what: 'Work' };
-  const durable = (what: string): Boundary => smoke ? { ...work_, what } : { base: where.root, forbidden: [subject, where.work], code: 'BENCH_RESULTS_INVALID', what };
-  return { ...where, subject, boundaries: { work: work_, results: durable('Result'), analysis: durable('Analysis') } };
+  // A version 2 benchmark repository is only ever read: no harness write may reach it.
+  const bench = plan.benchmark ? [plan.benchmark.path] : [];
+  const work_: Boundary = { base: where.work, forbidden: [subject, where.root, ...bench], code: 'BENCH_WORK_INVALID', what: 'Work' };
+  const durable = (what: string): Boundary => smoke ? { ...work_, what } : { base: where.root, forbidden: [subject, where.work, ...bench], code: 'BENCH_RESULTS_INVALID', what };
+  const plans = path.join(where.root, 'benchmark', 'plans', plan.spec.id);
+  return {
+    ...where, subject, plans,
+    boundaries: { work: work_, results: durable('Result'), analysis: durable('Analysis'), plans: { base: where.root, forbidden: [subject, where.work, ...bench], code: 'BENCH_RESULTS_INVALID', what: 'Plan freeze record' } },
+  };
 }
 
 function baseLocations(plan: LoadedPlan, root: string, work?: string) {
@@ -115,6 +121,11 @@ export async function locationDiagnostics(plan: LoadedPlan, where: Locations): P
   const [root, work, subject] = await Promise.all([physical(where.root), physical(where.work), physical(plan.subjectPath)]);
   if (within(root, work)) diagnostics.push({ code: 'BENCH_WORK_INVALID', path: where.work, message: 'The work directory must be physically outside the Keystone working tree.' });
   if (within(subject, work) || within(work, subject)) diagnostics.push({ code: 'BENCH_WORK_INVALID', path: where.work, message: 'The work directory and the subject repository must not physically contain each other.' });
+  if (plan.benchmark) {
+    const bench = await physical(plan.benchmark.path);
+    if (within(bench, work) || within(work, bench)) diagnostics.push({ code: 'BENCH_WORK_INVALID', path: where.work, message: 'The work directory and the benchmark repository must not physically contain each other.' });
+    if (within(bench, subject) || within(subject, bench)) diagnostics.push({ code: 'BENCH_WORK_INVALID', path: plan.benchmark.id, message: 'The subject and benchmark repositories must not physically contain each other.' });
+  }
   // Run directories are created and, after a failed preparation, removed: never through an alias.
   if ((await aliases(where.work, path.join(where.runs, 'x'))).length) diagnostics.push({ code: 'BENCH_WORK_INVALID', path: where.runs, message: 'The runs directory inside the work directory must not be a symbolic link or junction.' });
   if (plan.spec.purpose !== 'smoke') {
@@ -202,6 +213,7 @@ export async function loadRecords(plan: LoadedPlan, where: Locations): Promise<{
     const reject = (code: string, message: string) => refused.push({ code, path: label, message });
     if (!record) { reject('BENCH_RESULT_INVALID', 'Run record is not readable JSON.'); continue; }
     if (schemaDiagnostics('run-record', record, label, 'BENCH_RESULT_INVALID').length) { reject('BENCH_RESULT_INVALID', 'Run record does not match the run record schema.'); continue; }
+    if (record.schema_version !== plan.version) { reject('BENCH_RESULT_INVALID', `A version ${plan.version} plan reads only version ${plan.version} run records.`); continue; }
     if (record.evidence_hash !== evidenceHash(record)) { reject('BENCH_RESULT_EVIDENCE_MISMATCH', 'Run record content does not match its evidence hash.'); continue; }
     if (record.purpose === 'smoke' && plan.spec.purpose !== 'smoke') { reject('BENCH_SMOKE_NOT_EVIDENCE', 'A smoke run record is never benchmark evidence.'); continue; }
     if (record.plan.id !== plan.spec.id || record.plan.hash !== plan.hash) { reject('BENCH_PLAN_MISMATCH', `Run record was made under plan hash ${record.plan.hash}; the plan now hashes to ${plan.hash}.`); continue; }

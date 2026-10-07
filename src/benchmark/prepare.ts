@@ -6,6 +6,8 @@ import { loadPlan, sha256, type LoadedPlan } from './specs.js';
 import { weightable } from './scorecard.js';
 import { cloneAt, hasCommit } from './git.js';
 import { BoundaryError, guard, loadRecords, locationDiagnostics, locations, readJsonFile, writeVerified, type Locations } from './store.js';
+import { canonicalDiagnostics, frozenDiagnostics, pilotDiagnostics } from './plans.js';
+import { nextAttempt } from './attempts.js';
 
 export interface RunEntry { run_id: string; task: string; condition: string; profile: string; repetition: number; order_index: number }
 export interface Manifest { kind: 'keystone-bench-work-manifest'; schema_version: 1; plan: { id: string; hash: string }; seed: number; runs: RunEntry[] }
@@ -15,6 +17,8 @@ export interface RunState {
   plan: string;
   files_staged: number;
   setup?: unknown; manual?: unknown;
+  /** Version 2: the attempt number of this preparation of the planned run (TASK-0015 item 7). */
+  attempt?: number;
 }
 
 export const runId = (plan: string, task: string, condition: string, profile: string, repetition: number) =>
@@ -47,18 +51,34 @@ export const runPaths = (where: Locations, id: string) => {
   return { base, workspace: path.join(base, 'workspace'), harness: path.join(base, 'harness'), state: path.join(base, 'harness', 'state.json') };
 };
 
-export type Outcome = 'valid' | 'invalid' | 'prepared' | 'unchanged' | 'completed' | 'awaiting-record' | 'recorded' | 'scored' | 'reported' | 'blocked' | 'failed';
+export type Outcome = 'valid' | 'invalid' | 'prepared' | 'unchanged' | 'completed' | 'awaiting-record' | 'recorded' | 'scored' | 'reported' | 'blocked' | 'failed'
+  | 'verified' | 'frozen' | 'released' | 'calibrated' | 'analyzed' | 'classified';
 export interface Result { command: string; outcome: Outcome; plan: { id: string; hash: string } | null; diagnostics: Diagnostic[]; [key: string]: unknown }
 
 export interface Context { plan: LoadedPlan; where: Locations }
 
+/** Gates a command applies to version 2 experiment plans (TASK-0015): the canonical location, a
+ * matching freeze record, and pilot condition-blindness. Version 1 plans pass every gate.
+ */
+export type Gate = 'canonical' | 'frozen' | 'pilot';
+export interface OpenOptions { repos?: string; gates?: Gate[] }
+
 /** Loads the plan, checks locations and refuses to continue a plan whose content changed. */
-export async function open(command: string, planFile: string, root: string, work: string | undefined): Promise<{ context?: Context; result?: Result }> {
-  const { plan, diagnostics } = await loadPlan(planFile, weightable);
+export async function open(command: string, planFile: string, root: string, work: string | undefined, options: OpenOptions = {}): Promise<{ context?: Context; result?: Result }> {
+  const { plan, diagnostics, unresolved } = await loadPlan(planFile, weightable, { repos: options.repos, root });
+  if (unresolved) return { result: { command, outcome: 'blocked', plan: null, diagnostics, resolved: false } };
   if (!plan) return { result: { command, outcome: 'invalid', plan: null, diagnostics } };
+  const identity = { id: plan.spec.id, hash: plan.hash };
   const where = locations(plan, root, work);
   const located = await locationDiagnostics(plan, where);
-  if (located.length) return { result: { command, outcome: 'blocked', plan: { id: plan.spec.id, hash: plan.hash }, diagnostics: located } };
+  if (located.length) return { result: { command, outcome: 'blocked', plan: identity, diagnostics: located } };
+  const gates = options.gates ?? [];
+  const gated = [
+    ...(gates.includes('canonical') ? await canonicalDiagnostics(plan, root) : []),
+    ...(gates.includes('frozen') ? await frozenDiagnostics(plan, root) : []),
+    ...(gates.includes('pilot') ? await pilotDiagnostics(plan, root) : []),
+  ];
+  if (gated.length) return { result: { command, outcome: 'blocked', plan: identity, diagnostics: gated } };
   return { context: { plan, where } };
 }
 
@@ -77,21 +97,63 @@ export async function planChanges(context: Context): Promise<Diagnostic[]> {
   return diagnostics;
 }
 
-export async function prepare(planFile: string, root: string, work?: string): Promise<Result> {
-  const opened = await open('prepare', planFile, root, work);
+/** Prepares one planned run: a fresh clone of the subject at its pinned commit, then the condition's
+ * declared files. A failure removes only that run's directory. `attempt` is recorded in run state
+ * for version 2 reruns (TASK-0015 item 7).
+ */
+export async function prepareRun(context: Context, run: RunEntry, attempt?: number): Promise<Diagnostic[] | null> {
+  const { plan, where } = context;
+  const paths = runPaths(where, run.run_id);
+  try {
+    await guard(where.boundaries.work, paths.base);
+    await rm(paths.base, { recursive: true, force: true });
+    await guard(where.boundaries.work, paths.harness);
+    await mkdir(paths.harness, { recursive: true });
+    await guard(where.boundaries.work, paths.workspace);
+    await cloneAt(plan.subjectPath, paths.workspace, plan.subject.commit);
+    const condition = plan.conditions.find(c => c.spec.id === run.condition)!;
+    for (const entry of condition.spec.setup.files) {
+      await guard(where.boundaries.work, paths.workspace);
+      const destination = await safePath(paths.workspace, entry.to);
+      await mkdir(path.dirname(destination), { recursive: true });
+      const staged = await writeVerified(destination, await readFile(path.join(condition.directory, ...entry.from.split('/'))), where.boundaries.work);
+      if (staged) throw staged;
+    }
+    const state: RunState = { status: 'prepared', plan: plan.hash, files_staged: condition.spec.setup.files.length, ...(attempt ? { attempt } : {}) };
+    const failure = await writeVerified(paths.state, serialize(state), where.boundaries.work);
+    if (failure) throw failure;
+    return null;
+  } catch (error) {
+    // Cleanup removes only a run directory that is still inside its boundary.
+    try { await guard(where.boundaries.work, paths.base); await rm(paths.base, { recursive: true, force: true }); } catch { /* Left in place; reported below. */ }
+    return error instanceof BoundaryError ? [error.diagnostic] : (error as { diagnostics?: Diagnostic[] }).diagnostics ??
+      [{ code: (error as Error).name === 'BenchGitError' ? 'BENCH_CLONE_FAILED' : 'BENCH_PREPARE_FAILED', path: run.run_id, message: `Workspace preparation failed (${(error as Error).message}); the run was not prepared.` }];
+  }
+}
+
+/** The subject must be a local directory containing the pinned commit. */
+export async function subjectDiagnostics(plan: LoadedPlan): Promise<Diagnostic[]> {
+  const label = plan.spec.subject?.repository ?? plan.subject.id;
+  try {
+    if (!(await lstat(plan.subjectPath)).isDirectory()) throw new Error();
+  } catch {
+    return [{ code: 'BENCH_SUBJECT_INVALID', path: label, message: 'The subject repository is not a local directory.' }];
+  }
+  if (!(await hasCommit(plan.subjectPath, plan.subject.commit))) {
+    return [{ code: 'BENCH_SUBJECT_COMMIT_MISSING', path: label, message: `The subject does not contain commit ${plan.subject.commit}.` }];
+  }
+  return [];
+}
+
+export async function prepare(planFile: string, root: string, work?: string, repos?: string): Promise<Result> {
+  const opened = await open('prepare', planFile, root, work, { repos, gates: ['canonical', 'frozen'] });
   if (!opened.context) return opened.result!;
   const { plan, where } = opened.context;
   const identity = { id: plan.spec.id, hash: plan.hash };
   const changed = await planChanges(opened.context);
   if (changed.length) return { command: 'prepare', outcome: 'blocked', plan: identity, diagnostics: changed };
-  try {
-    if (!(await lstat(plan.subjectPath)).isDirectory()) throw new Error();
-  } catch {
-    return { command: 'prepare', outcome: 'blocked', plan: identity, diagnostics: [{ code: 'BENCH_SUBJECT_INVALID', path: plan.spec.subject.repository, message: 'The subject repository is not a local directory.' }] };
-  }
-  if (!(await hasCommit(plan.subjectPath, plan.spec.subject.commit))) {
-    return { command: 'prepare', outcome: 'blocked', plan: identity, diagnostics: [{ code: 'BENCH_SUBJECT_COMMIT_MISSING', path: plan.spec.subject.repository, message: `The subject does not contain commit ${plan.spec.subject.commit}.` }] };
-  }
+  const subject = await subjectDiagnostics(plan);
+  if (subject.length) return { command: 'prepare', outcome: 'blocked', plan: identity, diagnostics: subject };
   const runs = matrix(plan);
   // The manifest is fixed before any run is prepared, so even a failed preparation binds the work
   // directory to this plan's content (review B3).
@@ -107,31 +169,20 @@ export async function prepare(planFile: string, root: string, work?: string): Pr
       return { command: 'prepare', outcome: 'blocked', plan: identity, diagnostics: [{ code: 'BENCH_PLAN_CHANGED', path: run.run_id, message: 'The run was prepared under different plan content.' }], prepared, unchanged, work: where.work };
     }
     if (existing) { unchanged.push(run.run_id); continue; }
-    try {
-      await guard(where.boundaries.work, paths.base);
-      await rm(paths.base, { recursive: true, force: true });
-      await guard(where.boundaries.work, paths.harness);
-      await mkdir(paths.harness, { recursive: true });
-      await guard(where.boundaries.work, paths.workspace);
-      await cloneAt(plan.subjectPath, paths.workspace, plan.spec.subject.commit);
-      const condition = plan.conditions.find(c => c.spec.id === run.condition)!;
-      for (const entry of condition.spec.setup.files) {
-        await guard(where.boundaries.work, paths.workspace);
-        const destination = await safePath(paths.workspace, entry.to);
-        await mkdir(path.dirname(destination), { recursive: true });
-        const staged = await writeVerified(destination, await readFile(path.join(condition.directory, ...entry.from.split('/'))), where.boundaries.work);
-        if (staged) throw staged;
+    // Version 2: a fresh preparation continues the run's durable attempt history; it never reuses
+    // an attempt number or ignores archived attempts (TASK-0015 item 7).
+    let attempt: number | undefined;
+    if (plan.version === 2) {
+      const next = await nextAttempt(opened.context, run.run_id);
+      if ('diagnostics' in next) {
+        if (next.diagnostics.some(d => d.code === 'BENCH_ATTEMPT_TERMINAL')) { unchanged.push(run.run_id); continue; }
+        return { command: 'prepare', outcome: 'blocked', plan: identity, diagnostics: next.diagnostics, prepared, unchanged, work: where.work };
       }
-      const failure = await writeVerified(paths.state, serialize({ status: 'prepared', plan: plan.hash, files_staged: condition.spec.setup.files.length } satisfies RunState), where.boundaries.work);
-      if (failure) throw failure;
-      prepared.push(run.run_id);
-    } catch (error) {
-      // Cleanup removes only a run directory that is still inside its boundary.
-      try { await guard(where.boundaries.work, paths.base); await rm(paths.base, { recursive: true, force: true }); } catch { /* Left in place; reported below. */ }
-      const diagnostics = error instanceof BoundaryError ? [error.diagnostic] : (error as { diagnostics?: Diagnostic[] }).diagnostics ??
-        [{ code: (error as Error).name === 'BenchGitError' ? 'BENCH_CLONE_FAILED' : 'BENCH_PREPARE_FAILED', path: run.run_id, message: `Workspace preparation failed (${(error as Error).message}); the run was not prepared.` }];
-      return { command: 'prepare', outcome: 'failed', plan: identity, diagnostics, prepared, unchanged, work: where.work };
+      attempt = next.attempt > 1 ? next.attempt : undefined;
     }
+    const failed = await prepareRun(opened.context, run, attempt);
+    if (failed) return { command: 'prepare', outcome: 'failed', plan: identity, diagnostics: failed, prepared, unchanged, work: where.work };
+    prepared.push(run.run_id);
   }
   return { command: 'prepare', outcome: prepared.length ? 'prepared' : 'unchanged', plan: identity, diagnostics: [], prepared, unchanged, runs, work: where.work };
 }
