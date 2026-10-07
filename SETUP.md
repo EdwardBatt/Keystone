@@ -117,10 +117,13 @@ git push
 
 ## 10. Second repository comes later
 
-The approved architecture uses two repositories:
+The approved architecture separates Keystone from its benchmark inputs (`docs/REPO-SEPARATION.md`):
 
 - **Repo A — Keystone:** this repository, containing the reusable framework.
-- **Repo B — trainer benchmark:** the personal-trainer application used to benchmark Keystone.
+- **`trainer-app` — benchmark subject:** the personal-trainer application used to benchmark
+  Keystone.
+- **`trainer-bench` — benchmark repository:** its hidden task and evaluation material, pinned
+  separately (ADR-0004).
 
 Do **not** put the trainer application into this repository. Build/scaffold it when the Keystone
 foundation is ready for benchmark initialization.

@@ -192,7 +192,9 @@ infrastructure; it makes no claim about Keystone's value. Experiments, starting 
 supply the subject repository, task content, conditions, agent profiles and parameters through an
 experiment plan. The plan is fixed before its runs begin. Every recorded run and result identifies
 the exact plan it used through immutable provenance, sufficient to detect any later change to
-that plan. Application-specific task content stays in its subject repository.
+that plan. Application-specific task content stays out of Keystone: with its subject repository
+or, where including it in the measured subject would expose evaluation evidence, in a separately
+pinned benchmark repository (ADR-0004). Both pinned commits are part of every run's provenance.
 
 Only `keystone-bench` runs may launch external programs: the declared agent commands, condition
 setup and task oracles, inside the run's workspace. A manual profile is equally supported.

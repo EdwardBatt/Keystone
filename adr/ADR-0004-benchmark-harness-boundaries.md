@@ -6,7 +6,7 @@ title: Benchmark harness boundaries
 status: accepted
 created: 2026-10-05
 features: []
-tasks: [TASK-0012]
+tasks: [TASK-0012, TASK-0014]
 supersedes: []
 superseded_by: []
 tags: [benchmark, harness, telemetry, neutrality, start, authority]
@@ -224,6 +224,34 @@ source-repository immutability. No guarantee is weakened.
 - Agent sessions remain explicitly non-sandboxed. What an agent itself writes is the agent's own
   doing (guarantee 2).
 - This clarification does not permit known deterministic alias bypasses.
+
+## Clarification (2026-10-06, TASK-0014): evaluation material outside the measured subject
+Adopted by the owner on 2026-10-06 during TASK-0014 (Phase 8 design). It clarifies guarantee 8's
+placement of application-specific task content. **No other guarantee changes.** In particular,
+neutrality (g4), isolation (g3) and the exclusion of application content from Keystone (g8) are
+unchanged.
+
+- Guarantee 8 places application-specific task content with its subject, not in Keystone. Where
+  including hidden task and evaluation material in the measured subject would expose evaluation
+  evidence to the agent, that material may instead reside in a separate benchmark repository:
+  - task statements;
+  - session and fix prompts;
+  - oracles;
+  - seeded-trap definitions;
+  - judging rubrics;
+  - conditions or profiles carrying application knowledge.
+- The benchmark repository is application-specific and is never part of Keystone.
+- The subject repository and the benchmark repository are separate reproducible inputs. Each is
+  pinned by commit in the experiment plan, and both repository identities and pinned commits form
+  part of every run's immutable provenance.
+- A run's workspace is cloned from the subject repository only. Benchmark-repository material
+  reaches a run only through the harness:
+  - statements and prompts, as session input;
+  - oracles, run by the harness;
+  - files a condition's own declared setup stages, governed identically for every condition.
+- **Terminology.** Earlier references in this ADR to "Repo B" denote the benchmark subject and its
+  evaluation material. Under `docs/REPO-SEPARATION.md` these are now the subject `trainer-app` and
+  the separately pinned benchmark repository `trainer-bench`.
 
 ## Related Decisions
 - Supplements ADR-0001 through guarantee 7, as ADR-0002 did.

@@ -1,6 +1,6 @@
 # Keystone
 
-Keystone v0.1 is currently in active development and approximately 78% complete.
+Keystone v0.1 is currently in active development and approximately 85% complete.
 
 Keystone is a repo-native context system for AI-assisted software engineering. It keeps durable,
 structured project knowledge in the repository itself (requirements, decisions, tasks, rules,
@@ -90,7 +90,7 @@ Implemented characteristics, each covered by the test suite:
 | 5 | CLOSE and controlled learning | Complete |
 | 6 | COMPACT and knowledge retirement | Complete |
 | 7 | Benchmark harness (`keystone-bench`) | Complete |
-| 8 | Cross-model trial | Not started |
+| 8 | Cross-model trial | **Design accepted (TASK-0014); preparation not started** |
 
 Also planned for v0.1 and not yet implemented: `keystone context explain`. Known limitation:
 CLOSE's failure restoration is not yet verified in the way COMPACT's is (`docs/PHASE-6.md`).
